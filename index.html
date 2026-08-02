@@ -145,9 +145,9 @@ function syncWatchlist() {
 }
 
 function toggleAutoTrade() {
-  var token = getAppToken();
-  if (!token) return;
   if (!autoTradeEnabled) {
+    var token = getAppToken();
+    if (!token) return;
     if (!confirm("自動売買をONにします。よろしいですか？")) return;
     syncWatchlist().then(function(){
       return postJSON(PROXY+"/autotrade?enabled=true&token="+encodeURIComponent(token));
@@ -159,7 +159,7 @@ function toggleAutoTrade() {
       showToast("自動売買", "ON失敗: "+e.message, "sell", 5000);
     });
   } else {
-    postJSON(PROXY+"/autotrade?enabled=false&token="+encodeURIComponent(token)).then(function(){
+    postJSON(PROXY+"/autotrade?enabled=false").then(function(){
       autoTradeEnabled = false;
       updateAutoTradeBtn();
       showToast("自動売買", "OFFにしました", "sell", 3000);
@@ -263,7 +263,7 @@ function loadPositions() {
     document.getElementById("posGrid").innerHTML = "<div class='empty-msg'>⚠ 取得失敗: "+e.message+"</div>";
   });
 }
-  
+
 function clearCacheOnly() {
   if (!confirm("キャッシュのみクリアして再読み込みします。銘柄は残ります。")) return;
   if ('caches' in window) {
