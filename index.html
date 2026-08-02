@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🎛️ Trade Panel</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif; min-height: 100vh; padding-bottom: 48px; }
+.header { display: flex; justify-content: space-between; align-items: center; padding: 18px 16px; border-bottom: 1px solid #12121f; position: sticky; top: 0; background: #07070f; z-index: 100; flex-wrap: wrap; gap: 10px; }
+.title { font-size: 20px; font-weight: 800; color: #fff; }
+.btn { padding: 6px 14px; border-radius: 8px; border: 1px solid #00e5a044; background: #00e5a010; color: #00e5a0; cursor: pointer; font-size: 13px; }
+.btn-notif { padding: 6px 14px; border-radius: 8px; border: 1px solid #5577ff44; background: #5577ff10; color: #5577ff; cursor: pointer; font-size: 13px; }
+.btn-notif.on { background: #5577ff30; border-color: #5577ff; }
+.section { padding: 14px 16px; border-bottom: 1px solid #12121f; }
+.section-title { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 10px; }
+.add-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+.add-bar input { flex: 1; background: #0d0d1a; border: 1px solid #222236; color: #ccc; border-radius: 7px; padding: 8px 12px; font-size: 13px; }
+.watch-grid { display: flex; gap: 6px; flex-wrap: wrap; }
+.watch-btn { padding: 6px 12px; border-radius: 6px; border: 1px solid #222236; background: #0d0d1a; color: #aaa; cursor: pointer; font-size: 12px; }
+.pos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.pos-card { background: #0d0d1a; border: 1px solid #12121f; border-radius: 12px; padding: 14px; }
+.pos-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+.pos-symbol { font-weight: 700; font-size: 15px; color: #fff; }
+.pos-side { font-size: 11px; padding: 1px 6px; border-radius: 4px; font-weight: 700; }
+.pos-side.long { background: #00e5a030; color: #00e5a0; }
+.pos-side.short { background: #ff4d6d30; color: #ff4d6d; }
+.pos-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; border-bottom: 1px solid #0f0f1c; }
+.pos-label { color: #666; }
+.pos-val { color: #ccc; font-variant-numeric: tabular-nums; }
+.pnl-pos { color: #00e5a0; font-weight: 700; }
+.pnl-neg { color: #ff4d6d; font-weight: 700; }
+.empty-msg { color: #444; text-align: center; padding: 24px; font-size: 13px; }
+.signal-badge { font-size: 10px; padding: 1px 5px; border-radius: 3px; }
+.sig-buy { background: #00e5a030; color: #00e5a0; }
+.sig-sell { background: #ff4d6d30; color: #ff4d6d; }
+.sig-hold { background: #8888bb30; color: #8888bb; }
+.toast-wrap { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 8px; width: 90%; max-width: 360px; pointer-events: none; }
+.toast { border-radius: 12px; padding: 12px 16px; font-size: 13px; box-shadow: 0 4px 24px #0008; animation: slideIn 0.3s ease; pointer-events: auto; }
+.toast.buy { background: #00e5a0ee; color: #000; }
+.toast.sell { background: #ff4d6dee; color: #fff; }
+@keyframes slideIn { from { opacity: 0; transform: translateY(-16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes slideOut { from { opacity: 1; } to { opacity: 0; transform: translateY(-8px); } }
+</style>
+</head>
+<body>
+<div class="toast-wrap" id="toastWrap"></div>
+<div class="header">
+  <div class="title">🎛️ Trade Panel</div>
+  <button class="btn-notif" id="autoTradeBtn" onclick="toggleAutoTrade()">🤖 自動 OFF</button>
+</div>
+
+<div class="section">
+  <div class="section-title">監視銘柄</div>
+  <div class="add-bar">
+    <input id="pairInput" placeholder="例: DOGE または DOGE-USDT" />
+    <button class="btn" onclick="addPair()">追加</button>
+  </div>
+  <div class="watch-grid" id="watchGrid"></div>
+</div>
+
+<div class="section">
+  <div class="section-title">保有ポジション</div>
+  <div class="pos-grid" id="posGrid">
+    <div class="empty-msg">読み込み中...</div>
+  </div>
+</div>
+
+<script>
+var PROXY = "https://bingx-proxy-v83p.onrender.com";
+var appToken = null;
+
+function getAppToken() {
+  if (appToken) return appToken;
+  var input = prompt("合言葉を入力してください");
+  if (input) appToken = input;
+  return appToken;
+}
+
+function getJSON(url) {
+  return new Promise(function(resolve,reject) {
+    var xhr=new XMLHttpRequest();
+    xhr.open("GET",url);
+    xhr.onload=function(){ if(xhr.status===200){ try{resolve(JSON.parse(xhr.responseText));}catch(e){reject(e);} }else{reject(new Error("HTTP "+xhr.status));} };
+    xhr.onerror=function(){ reject(new Error("Network error")); };
+    xhr.timeout=30000;
+    xhr.ontimeout=function(){ reject(new Error("Timeout")); };
+    xhr.send();
+  });
+}
+
+function postJSON(url) {
+  return new Promise(function(resolve,reject) {
+    var xhr=new XMLHttpRequest();
+    xhr.open("POST",url);
+    xhr.onload=function(){ if(xhr.status===200){ try{resolve(JSON.parse(xhr.responseText));}catch(e){reject(e);} }else{reject(new Error("HTTP "+xhr.status));} };
+    xhr.onerror=function(){ reject(new Error("Network error")); };
+    xhr.timeout=30000;
+    xhr.ontimeout=function(){ reject(new Error("Timeout")); };
+    xhr.send();
+  });
+}
+
+function showToast(title, message, type, duration) {
+  duration = duration || 4000;
+  var wrap = document.getElementById("toastWrap");
+  var toast = document.createElement("div");
+  toast.className = "toast " + type;
+  toast.innerHTML = "<div style='font-weight:800'>"+title+"</div><div style='font-size:12px;margin-top:2px'>"+message+"</div>";
+  wrap.appendChild(toast);
+  setTimeout(function(){ toast.style.animation="slideOut 0.3s ease forwards"; setTimeout(function(){ if(toast.parentNode) toast.parentNode.removeChild(toast); },300); }, duration);
+}
+
+var WATCHLIST = [];
+try { WATCHLIST = JSON.parse(localStorage.getItem("panelWatchlist") || "[]"); } catch(e) {}
+function saveWatchlist() { try { localStorage.setItem("panelWatchlist", JSON.stringify(WATCHLIST)); } catch(e) {} }
+
+var autoTradeEnabled = false;
+
+function updateAutoTradeBtn() {
+  var btn = document.getElementById("autoTradeBtn");
+  btn.textContent = autoTradeEnabled ? "🤖 自動 ON" : "🤖 自動 OFF";
+  btn.classList.toggle("on", autoTradeEnabled);
+}
+
+function syncWatchlist() {
+  var symbols = WATCHLIST.join(",");
+  return postJSON(PROXY+"/watchlist?symbols="+encodeURIComponent(symbols)+"&interval=4h");
+}
+
+function toggleAutoTrade() {
+  var token = getAppToken();
+  if (!token) return;
+  if (!autoTradeEnabled) {
+    if (!confirm("自動売買をONにします。よろしいですか？")) return;
+    syncWatchlist().then(function(){
+      return postJSON(PROXY+"/autotrade?enabled=true&token="+encodeURIComponent(token));
+    }).then(function(){
+      autoTradeEnabled = true;
+      updateAutoTradeBtn();
+      showToast("自動売買", "ONにしました", "buy", 4000);
+    }).catch(function(e){
+      showToast("自動売買", "ON失敗: "+e.message, "sell", 5000);
+    });
+  } else {
+    postJSON(PROXY+"/autotrade?enabled=false&token="+encodeURIComponent(token)).then(function(){
+      autoTradeEnabled = false;
+      updateAutoTradeBtn();
+      showToast("自動売買", "OFFにしました", "sell", 3000);
+    }).catch(function(e){
+      showToast("自動売買", "OFF失敗: "+e.message, "sell", 5000);
+    });
+  }
+}
+
+function renderWatchlist() {
+  var grid = document.getElementById("watchGrid");
+  var html = "";
+  for (var i=0;i<WATCHLIST.length;i++) {
+    var sym = WATCHLIST[i];
+    html += "<button class='watch-btn' onclick='removePairConfirm(\""+sym+"\")'>"+sym.replace("-USDT","")+" ✕</button>";
+  }
+  grid.innerHTML = html || "<div class='empty-msg' style='padding:8px'>監視銘柄がありません</div>";
+}
+
+function addPair() {
+  var input = document.getElementById("pairInput");
+  var sym = input.value.toUpperCase().replace("/","-").trim();
+  if (!sym) return;
+  if (sym.indexOf("-") < 0) sym = sym + "-USDT";
+  if (WATCHLIST.indexOf(sym) < 0) {
+    WATCHLIST.push(sym);
+    saveWatchlist();
+    renderWatchlist();
+    if (autoTradeEnabled) syncWatchlist().catch(function(){});
+  }
+  input.value = "";
+}
+
+function removePairConfirm(sym) {
+  if (!confirm(sym.replace("-USDT","")+" を監視から外しますか？")) return;
+  var idx = WATCHLIST.indexOf(sym);
+  if (idx >= 0) WATCHLIST.splice(idx, 1);
+  saveWatchlist();
+  renderWatchlist();
+  if (autoTradeEnabled) syncWatchlist().catch(function(){});
+}
+
+function fmtPrice(p) {
+  if (p==null) return "-";
+  if (p>=10000) return p.toFixed(1);
+  if (p>=10) return p.toFixed(2);
+  if (p>=1) return p.toFixed(3);
+  if (p>=0.1) return p.toFixed(4);
+  if (p>=0.01) return p.toFixed(5);
+  return p.toFixed(6);
+}
+
+function signalBadgeClass(type) {
+  if (!type) return "sig-hold";
+  if (type === "BUY") return "sig-buy";
+  if (type === "SELL") return "sig-sell";
+  return "sig-hold";
+}
+
+function loadPositions() {
+  getJSON(PROXY+"/position-details").then(function(res){
+    var grid = document.getElementById("posGrid");
+    var list = res.positions || [];
+    if (list.length === 0) {
+      grid.innerHTML = "<div class='empty-msg'>保有ポジションはありません</div>";
+      return;
+    }
+    var html = "";
+    list.forEach(function(p){
+      var pnl = p.unrealized_profit;
+      var pnlClass = (pnl >= 0) ? "pnl-pos" : "pnl-neg";
+      var pnlStr = pnl != null ? (pnl>=0?"+":"")+pnl.toFixed(2)+" USDT" : "-";
+      var sideClass = p.side === "LONG" ? "long" : "short";
+      var sideLabel = p.side === "LONG" ? "ロング" : "ショート";
+      html += "<div class='pos-card'>"+
+        "<div class='pos-header'>"+
+          "<span class='pos-symbol'>"+p.symbol.replace("-","/")+"</span>"+
+          "<span class='pos-side "+sideClass+"'>"+sideLabel+"</span>"+
+        "</div>"+
+        "<div class='pos-row'><span class='pos-label'>現在価格</span><span class='pos-val'>"+fmtPrice(p.current_price)+"</span></div>"+
+        "<div class='pos-row'><span class='pos-label'>取得価格</span><span class='pos-val'>"+fmtPrice(p.entry_price)+"</span></div>"+
+        "<div class='pos-row'><span class='pos-label'>数量</span><span class='pos-val'>"+p.qty+"</span></div>"+
+        "<div class='pos-row'><span class='pos-label'>SL</span><span class='pos-val'>"+fmtPrice(p.sl_price)+"</span></div>"+
+        "<div class='pos-row'><span class='pos-label'>損益</span><span class='"+pnlClass+"'>"+pnlStr+"</span></div>"+
+        "<div class='pos-row'><span class='pos-label'>取得時シグナル</span><span class='pos-val'><span class='signal-badge "+signalBadgeClass(p.entry_signal)+"'>"+(p.entry_signal||"-")+"</span> "+(p.entry_score!=null?p.entry_score:"-")+" / トレンド:"+(p.entry_trend!=null?p.entry_trend:"-")+"</span></div>"+
+        "<div class='pos-row' style='border-bottom:none'><span class='pos-label'>現在シグナル</span><span class='pos-val'><span class='signal-badge "+signalBadgeClass(p.current_signal)+"'>"+(p.current_signal||"-")+"</span> "+(p.current_score!=null?p.current_score:"-")+" / トレンド:"+(p.current_trend!=null?p.current_trend:"-")+"</span></div>"+
+      "</div>";
+    });
+    grid.innerHTML = html;
+  }).catch(function(e){
+    document.getElementById("posGrid").innerHTML = "<div class='empty-msg'>⚠ 取得失敗: "+e.message+"</div>";
+  });
+}
+
+function checkAutoTradeStatus() {
+  getJSON(PROXY+"/autotrade").then(function(res){
+    if (autoTradeEnabled !== res.enabled) {
+      autoTradeEnabled = res.enabled;
+      updateAutoTradeBtn();
+    }
+  }).catch(function(){});
+}
+
+renderWatchlist();
+checkAutoTradeStatus();
+loadPositions();
+setInterval(loadPositions, 30000);
+setInterval(checkAutoTradeStatus, 30000);
+</script>
+</body>
+</html>
