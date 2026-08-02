@@ -41,4 +41,215 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 <div class="section">
   <div class="section-title">TP/SL幅(BB率別、%)</div>
   <div class="row"><label>BB率50%以上</label><input type="number" id="tpslRate50" step="1"></div>
-  <div class="row">
+  <div class="row"><label>BB率30%以上</label><input type="number" id="tpslRate30" step="1"></div>
+  <div class="row"><label>BB率10%以上</label><input type="number" id="tpslRate10" step="1"></div>
+  <div class="row"><label>BB率10%未満</label><input type="number" id="tpslRateLow" step="1"></div>
+</div>
+
+<div class="section">
+  <div class="section-title">シグナル閾値</div>
+  <div class="row"><label>弱</label><input type="number" id="thWeak" step="0.5"></div>
+  <div class="row"><label>中</label><input type="number" id="thMid" step="0.5"></div>
+  <div class="row"><label>強</label><input type="number" id="thStrong" step="0.5"></div>
+</div>
+
+<div class="section">
+  <div class="section-title">MACD</div>
+  <div class="row"><label>DIF>0&gt;Sig 拡大 点数</label><input type="number" id="macd1" step="0.5"></div>
+  <div class="row"><label>DIF>0&gt;Sig 縮小 点数</label><input type="number" id="macd2" step="0.5"></div>
+  <div class="row"><label>DIF>0≤Sig 点数</label><input type="number" id="macd3" step="0.5"></div>
+  <div class="row"><label>DIF≤0>Sig 点数</label><input type="number" id="macd4" step="0.5"></div>
+  <div class="row"><label>DIF≤0≤Sig 縮小 点数</label><input type="number" id="macd5" step="0.5"></div>
+  <div class="row"><label>DIF≤0≤Sig 拡大 点数</label><input type="number" id="macd6" step="0.5"></div>
+</div>
+
+<div class="section">
+  <div class="section-title">RSI（閾値 / 点数）</div>
+  <div class="pair-row">
+    <span class="pair-label">高値1</span>
+    <div class="pair-inputs">
+      <input type="number" id="rsiHigh1" step="1">
+      <span>/</span>
+      <input type="number" id="rsiHigh1Score" step="0.5">
+    </div>
+  </div>
+  <div class="pair-row">
+    <span class="pair-label">高値2</span>
+    <div class="pair-inputs">
+      <input type="number" id="rsiHigh2" step="1">
+      <span>/</span>
+      <input type="number" id="rsiHigh2Score" step="0.5">
+    </div>
+  </div>
+  <div class="pair-row">
+    <span class="pair-label">低値1</span>
+    <div class="pair-inputs">
+      <input type="number" id="rsiLow1" step="1">
+      <span>/</span>
+      <input type="number" id="rsiLow1Score" step="0.5">
+    </div>
+  </div>
+  <div class="pair-row">
+    <span class="pair-label">低値2</span>
+    <div class="pair-inputs">
+      <input type="number" id="rsiLow2" step="1">
+      <span>/</span>
+      <input type="number" id="rsiLow2Score" step="0.5">
+    </div>
+  </div>
+  <div class="row"><label>平均/前回比較 点数</label><input type="number" id="rsiTrendScore" step="0.5"></div>
+</div>
+
+<div class="section">
+  <div class="section-title">BB（ボリンジャーバンド）</div>
+  <div class="row"><label>下限タッチ 点数</label><input type="number" id="bbLowerScore" step="0.5"></div>
+  <div class="row"><label>上限タッチ 点数</label><input type="number" id="bbUpperScore" step="0.5"></div>
+  <div class="row"><label>中央より上 点数</label><input type="number" id="bbMidUpScore" step="0.1"></div>
+  <div class="row"><label>中央より下 点数</label><input type="number" id="bbMidDownScore" step="0.1"></div>
+  <div class="row"><label>上限クロス(下抜け) 点数</label><input type="number" id="bbCrossUpperScore" step="0.5"></div>
+  <div class="row"><label>下限クロス(上抜け) 点数</label><input type="number" id="bbCrossLowerScore" step="0.5"></div>
+  <div class="row"><label>中央クロス(上抜け) 点数</label><input type="number" id="bbCrossMidUpScore" step="0.5"></div>
+  <div class="row"><label>中央クロス(下抜け) 点数</label><input type="number" id="bbCrossMidDownScore" step="0.5"></div>
+</div>
+
+<div class="section">
+  <div class="section-title">資金調達率（閾値 / 点数）</div>
+  <div class="pair-row">
+    <span class="pair-label">高値1</span>
+    <div class="pair-inputs">
+      <input type="number" id="frHigh1" step="0.001">
+      <span>/</span>
+      <input type="number" id="frHigh1Score" step="0.5">
+    </div>
+  </div>
+  <div class="pair-row">
+    <span class="pair-label">高値2</span>
+    <div class="pair-inputs">
+      <input type="number" id="frHigh2" step="0.0001">
+      <span>/</span>
+      <input type="number" id="frHigh2Score" step="0.5">
+    </div>
+  </div>
+  <div class="pair-row">
+    <span class="pair-label">低値1</span>
+    <div class="pair-inputs">
+      <input type="number" id="frLow1" step="0.001">
+      <span>/</span>
+      <input type="number" id="frLow1Score" step="0.5">
+    </div>
+  </div>
+  <div class="pair-row">
+    <span class="pair-label">低値2</span>
+    <div class="pair-inputs">
+      <input type="number" id="frLow2" step="0.0001">
+      <span>/</span>
+      <input type="number" id="frLow2Score" step="0.5">
+    </div>
+  </div>
+  <div class="pair-row">
+    <span class="pair-label">低値3</span>
+    <div class="pair-inputs">
+      <input type="number" id="frLow3" step="0.00001">
+      <span>/</span>
+      <input type="number" id="frLow3Score" step="0.5">
+    </div>
+  </div>
+</div>
+
+<div style="height:70px"></div>
+
+<div class="save-bar">
+  <button class="btn btn-reset" onclick="resetAll()">リセット</button>
+  <button class="btn btn-save" onclick="saveAll()">保存</button>
+</div>
+
+<script>
+var PROXY = "https://bingx-proxy-v83p.onrender.com";
+
+var SETTINGS_DEFAULT = {
+  rsiHigh1:85, rsiHigh1Score:-2,
+  rsiHigh2:70, rsiHigh2Score:-1,
+  rsiLow1:15, rsiLow1Score:2,
+  rsiLow2:30, rsiLow2Score:1,
+  rsiTrendScore:2,
+  bbLowerScore:2, bbUpperScore:-2, bbMidUpScore:0.5, bbMidDownScore:-0.5,
+  bbCrossUpperScore:-2, bbCrossLowerScore:2, bbCrossMidUpScore:1, bbCrossMidDownScore:-1,
+  macd1:3, macd2:2, macd3:1, macd4:-1, macd5:-2, macd6:-3,
+  frHigh1:0.01, frHigh1Score:-2,
+  frHigh2:0.0001, frHigh2Score:-1,
+  frLow1:-0.01, frLow1Score:2,
+  frLow2:-0.0001, frLow2Score:1.5,
+  frLow3:-0.00005, frLow3Score:1,
+  thWeak:3.5, thMid:5.5, thStrong:7.5,
+  tpslRate50:10, tpslRate30:8, tpslRate10:6, tpslRateLow:4
+};
+
+var appToken = null;
+function getAppToken() {
+  if (appToken) return appToken;
+  var input = prompt("合言葉を入力してください");
+  if (input) appToken = input;
+  return appToken;
+}
+
+function loadValues() {
+  fetch(PROXY+"/autotrade").then(function(r){return r.json();}).then(function(d){
+    var s = SETTINGS_DEFAULT;
+    for (var key in SETTINGS_DEFAULT) {
+      var el = document.getElementById(key);
+      if (el) el.value = s[key];
+    }
+  }).catch(function(){});
+  fetch(PROXY+"/trade-settings").then(function(r){return r.json();}).then(function(d){
+    document.getElementById("tradeMargin").value = d.margin;
+    document.getElementById("tradeLeverage").value = d.leverage;
+  }).catch(function(){
+    document.getElementById("tradeMargin").value = 50;
+    document.getElementById("tradeLeverage").value = 15;
+  });
+  for (var key in SETTINGS_DEFAULT) {
+    var el = document.getElementById(key);
+    if (el && !el.value) el.value = SETTINGS_DEFAULT[key];
+  }
+}
+
+function saveAll() {
+  var token = getAppToken();
+  if (!token) return;
+  var newSettings = {};
+  for (var key in SETTINGS_DEFAULT) {
+    var el = document.getElementById(key);
+    if (el) {
+      var v = parseFloat(el.value);
+      newSettings[key] = isNaN(v) ? SETTINGS_DEFAULT[key] : v;
+    }
+  }
+  var margin = parseFloat(document.getElementById("tradeMargin").value) || 50;
+  var leverage = parseInt(document.getElementById("tradeLeverage").value) || 15;
+  var settingsStr = encodeURIComponent(JSON.stringify(newSettings));
+
+  Promise.all([
+    fetch(PROXY+"/signal-settings?settings="+settingsStr, {method:"POST"}),
+    fetch(PROXY+"/trade-settings?margin="+margin+"&leverage="+leverage+"&token="+encodeURIComponent(token), {method:"POST"})
+  ]).then(function(){
+
+    alert("設定を保存しました");
+    window.location.href = "index.html";
+  }).catch(function(e){
+    alert("保存に失敗しました: "+e.message);
+  });
+}
+
+function resetAll() {
+  if (confirm("すべての設定をデフォルトに戻しますか？")) {
+    for (var key in SETTINGS_DEFAULT) {
+      var el = document.getElementById(key);
+      if (el) el.value = SETTINGS_DEFAULT[key];
+    }
+  }
+}
+
+loadValues();
+</script>
+</body>
+</html>
