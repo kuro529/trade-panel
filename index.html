@@ -7,15 +7,17 @@
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif; min-height: 100vh; padding-bottom: 48px; }
-.header { display: flex; justify-content: space-between; align-items: center; padding: 18px 16px; border-bottom: 1px solid #12121f; position: sticky; top: 0; background: #07070f; z-index: 100; flex-wrap: wrap; gap: 10px; }
+.header { display: flex; justify-content: space-between; align-items: flex-start; padding: 18px 16px 12px; border-bottom: 1px solid #12121f; flex-wrap: wrap; gap: 10px; position: sticky; top: 0; background: #07070f; z-index: 100; }
 .title { font-size: 20px; font-weight: 800; color: #fff; }
+.controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .btn { padding: 6px 14px; border-radius: 8px; border: 1px solid #00e5a044; background: #00e5a010; color: #00e5a0; cursor: pointer; font-size: 13px; }
 .btn-notif { padding: 6px 14px; border-radius: 8px; border: 1px solid #5577ff44; background: #5577ff10; color: #5577ff; cursor: pointer; font-size: 13px; }
 .btn-notif.on { background: #5577ff30; border-color: #5577ff; }
+.add-bar { display: flex; gap: 8px; padding: 10px 16px; background: #0d0d1a; border-bottom: 1px solid #12121f; align-items: center; flex-wrap: wrap; }
+.add-bar input { flex: 1; min-width: 120px; background: #07070f; border: 1px solid #222236; color: #ccc; border-radius: 7px; padding: 6px 12px; font-size: 13px; }
+.hidden { display: none; }
 .section { padding: 14px 16px; border-bottom: 1px solid #12121f; }
 .section-title { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 10px; }
-.add-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
-.add-bar input { flex: 1; background: #0d0d1a; border: 1px solid #222236; color: #ccc; border-radius: 7px; padding: 8px 12px; font-size: 13px; }
 .watch-grid { display: flex; gap: 6px; flex-wrap: wrap; }
 .watch-btn { padding: 6px 12px; border-radius: 6px; border: 1px solid #222236; background: #0d0d1a; color: #aaa; cursor: pointer; font-size: 12px; }
 .pos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
@@ -47,15 +49,19 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 <div class="toast-wrap" id="toastWrap"></div>
 <div class="header">
   <div class="title">🎛️ Trade Panel</div>
-  <button class="btn-notif" id="autoTradeBtn" onclick="toggleAutoTrade()">🤖 自動 OFF</button>
+  <div class="controls">
+    <button class="btn-notif" id="autoTradeBtn" onclick="toggleAutoTrade()">🤖 自動 OFF</button>
+    <button class="btn" onclick="toggleAdd()">＋ 追加</button>
+    <a href="settings.html" class="btn" style="text-decoration:none;display:inline-block">⚙️ 設定</a>
+  </div>
+</div>
+<div class="add-bar hidden" id="addBar">
+  <input id="pairInput" placeholder="例: DOGE または DOGE-USDT" />
+  <button class="btn" onclick="addPair()">追加</button>
 </div>
 
 <div class="section">
   <div class="section-title">監視銘柄</div>
-  <div class="add-bar">
-    <input id="pairInput" placeholder="例: DOGE または DOGE-USDT" />
-    <button class="btn" onclick="addPair()">追加</button>
-  </div>
   <div class="watch-grid" id="watchGrid"></div>
 </div>
 
@@ -158,9 +164,18 @@ function renderWatchlist() {
   var html = "";
   for (var i=0;i<WATCHLIST.length;i++) {
     var sym = WATCHLIST[i];
-    html += "<button class='watch-btn' onclick='removePairConfirm(\""+sym+"\")'>"+sym.replace("-USDT","")+" ✕</button>";
+    html += "<button class='watch-btn' ontouchstart='startLongPress(\""+sym+"\")' ontouchend='cancelLongPress()'>"+sym.replace("-USDT","")+"</button>";
   }
   grid.innerHTML = html || "<div class='empty-msg' style='padding:8px'>監視銘柄がありません</div>";
+}
+
+var longPressTimer = null;
+function startLongPress(sym) { longPressTimer = setTimeout(function() { removePairConfirm(sym); }, 700); }
+function cancelLongPress() { if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; } }
+
+function toggleAdd() {
+  var bar = document.getElementById("addBar");
+  if (bar.classList.contains("hidden")) bar.classList.remove("hidden"); else bar.classList.add("hidden");
 }
 
 function addPair() {
@@ -175,6 +190,7 @@ function addPair() {
     if (autoTradeEnabled) syncWatchlist().catch(function(){});
   }
   input.value = "";
+  document.getElementById("addBar").classList.add("hidden");
 }
 
 function removePairConfirm(sym) {
