@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>⚙️ 設定</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif; min-height: 100vh; padding-bottom: 48px; }
+.header { display: flex; justify-content: space-between; align-items: center; padding: 18px 16px; border-bottom: 1px solid #12121f; position: sticky; top: 0; background: #07070f; z-index: 100; }
+.title { font-size: 18px; font-weight: 800; color: #fff; }
+.btn { padding: 6px 14px; border-radius: 8px; border: 1px solid #00e5a044; background: #00e5a010; color: #00e5a0; cursor: pointer; font-size: 13px; text-decoration: none; display: inline-block; }
+.section { padding: 16px; border-bottom: 1px solid #12121f; }
+.section-title { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 12px; }
+.row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.row label { flex: 1; font-size: 12px; color: #888; }
+.row input { width: 80px; background: #0d0d1a; border: 1px solid #222236; color: #ccc; border-radius: 6px; padding: 6px 8px; font-size: 13px; text-align: right; }
+.pair-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.pair-label { flex: 1; font-size: 12px; color: #888; }
+.pair-inputs { display: flex; gap: 6px; align-items: center; }
+.pair-inputs span { font-size: 10px; color: #555; }
+.pair-inputs input { width: 70px; background: #0d0d1a; border: 1px solid #222236; color: #ccc; border-radius: 6px; padding: 6px 8px; font-size: 13px; text-align: right; }
+.save-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #0d0d1a; border-top: 1px solid #222236; padding: 12px 16px; display: flex; gap: 10px; }
+.save-bar .btn { flex: 1; text-align: center; padding: 10px; font-size: 14px; }
+.btn-save { background: #00e5a0; color: #000; border: none; }
+.btn-reset { background: #ff4d6d10; color: #ff4d6d; border: 1px solid #ff4d6d44; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="title">⚙️ 設定</div>
+  <a href="index.html" class="btn">← 戻る</a>
+</div>
+
+<div class="section">
+  <div class="section-title">自動売買設定</div>
+  <div class="row"><label>証拠金(USDT)</label><input type="number" id="tradeMargin" step="1"></div>
+  <div class="row"><label>レバレッジ(倍)</label><input type="number" id="tradeLeverage" step="1"></div>
+</div>
+
+<div class="section">
+  <div class="section-title">TP/SL幅(BB率別、%)</div>
+  <div class="row"><label>BB率50%以上</label><input type="number" id="tpslRate50" step="1"></div>
+  <div class="row">
