@@ -11,6 +11,7 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 .title { font-size: 20px; font-weight: 800; color: #fff; }
 .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .btn { padding: 6px 14px; border-radius: 8px; border: 1px solid #00e5a044; background: #00e5a010; color: #00e5a0; cursor: pointer; font-size: 13px; }
+select { background: #0d0d1a; border: 1px solid #222236; color: #aaa; border-radius: 7px; padding: 5px 10px; font-size: 13px; }
 .btn-notif { padding: 6px 14px; border-radius: 8px; border: 1px solid #5577ff44; background: #5577ff10; color: #5577ff; cursor: pointer; font-size: 13px; }
 .btn-notif.on { background: #5577ff30; border-color: #5577ff; }
 .add-bar { display: flex; gap: 8px; padding: 10px 16px; background: #0d0d1a; border-bottom: 1px solid #12121f; align-items: center; flex-wrap: wrap; }
@@ -49,7 +50,13 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 <div class="toast-wrap" id="toastWrap"></div>
 <div class="header">
   <div class="title">🎛️ Trade Panel</div>
-    <div class="controls">
+  <div class="controls">
+    <select id="intervalSelect">
+      <option value="15m">15m</option>
+      <option value="1h">1h</option>
+      <option value="4h" selected>4h</option>
+      <option value="1d">1d</option>
+    </select>
     <button class="btn-notif" id="autoTradeBtn" onclick="toggleAutoTrade()">🤖 自動 OFF</button>
     <button class="btn" onclick="loadPositions()">🔄 更新</button>
     <a href="settings.html" class="btn" style="text-decoration:none;display:inline-block">⚙️ 設定</a>
@@ -133,7 +140,8 @@ function updateAutoTradeBtn() {
 
 function syncWatchlist() {
   var symbols = WATCHLIST.join(",");
-  return postJSON(PROXY+"/watchlist?symbols="+encodeURIComponent(symbols)+"&interval=4h");
+  var interval = document.getElementById("intervalSelect").value;
+  return postJSON(PROXY+"/watchlist?symbols="+encodeURIComponent(symbols)+"&interval="+interval);
 }
 
 function toggleAutoTrade() {
@@ -278,6 +286,10 @@ function checkAutoTradeStatus() {
     }
   }).catch(function(){});
 }
+
+document.getElementById("intervalSelect").addEventListener("change", function(){
+  if (autoTradeEnabled) syncWatchlist().catch(function(){});
+});
 
 renderWatchlist();
 checkAutoTradeStatus();
