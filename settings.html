@@ -184,14 +184,6 @@ var SETTINGS_DEFAULT = {
   tpslRate50:10, tpslRate30:8, tpslRate10:6, tpslRateLow:4
 };
 
-var appToken = null;
-function getAppToken() {
-  if (appToken) return appToken;
-  var input = prompt("合言葉を入力してください");
-  if (input) appToken = input;
-  return appToken;
-}
-
 function loadValues() {
   fetch(PROXY+"/autotrade").then(function(r){return r.json();}).then(function(d){
     var s = SETTINGS_DEFAULT;
@@ -214,8 +206,6 @@ function loadValues() {
 }
 
 function saveAll() {
-  var token = getAppToken();
-  if (!token) return;
   var newSettings = {};
   for (var key in SETTINGS_DEFAULT) {
     var el = document.getElementById(key);
@@ -230,9 +220,8 @@ function saveAll() {
 
   Promise.all([
     fetch(PROXY+"/signal-settings?settings="+settingsStr, {method:"POST"}),
-    fetch(PROXY+"/trade-settings?margin="+margin+"&leverage="+leverage+"&token="+encodeURIComponent(token), {method:"POST"})
+    fetch(PROXY+"/trade-settings?margin="+margin+"&leverage="+leverage, {method:"POST"})
   ]).then(function(){
-
     alert("設定を保存しました");
     window.location.href = "index.html";
   }).catch(function(e){
