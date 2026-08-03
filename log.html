@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>📋 取引ログ</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif; min-height: 100vh; }
+.header { display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid #12121f; position: sticky; top: 0; background: #07070f; z-index: 100; gap: 8px; }
+.title { font-size: 18px; font-weight: 800; color: #fff; white-space: nowrap; }
+.btn { padding: 6px 12px; border-radius: 8px; border: 1px solid #00e5a044; background: #00e5a010; color: #00e5a0; cursor: pointer; font-size: 13px; text-decoration: none; display: inline-block; white-space: nowrap; }
+.summary { display: flex; gap: 14px; padding: 10px 16px; border-bottom: 1px solid #12121f; font-size: 12px; color: #888; flex-wrap: wrap; }
+.summary b { color: #fff; font-weight: 700; }
+.list { padding: 4px 0 40px; }
+.row { display: flex; align-items: center; gap: 8px; padding: 9px 16px; border-bottom: 1px solid #10101c; font-size: 12px; white-space: nowrap; }
+.c-sym { flex: 0 0 66px; color: #fff; font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
+.c-side { flex: 0 0 20px; font-weight: 700; text-align: center; }
+.c-side.long { color: #00e5a0; }
+.c-side.short { color: #ff4d6d; }
+.c-pnl { flex: 0 0 78px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.c-pnl.pos { color: #00e5a0; }
+.c-pnl.neg { color: #ff4d6d; }
+.c-pnl.nil { color: #555; }
+.c-reason { flex: 1 1 auto; color: #9c8fd0; overflow: hidden; text-overflow: ellipsis; text-align: right; }
+.c-time { flex: 0 0 88px; color: #555; text-align: right; font-variant-numeric: tabular-nums; }
+.empty-msg { color: #444; text-align: center; padding: 32px 16px; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="title">📋 取引ログ</div>
+  <div style="display:flex;gap:8px">
+    <button class="btn" onclick="loadLog()">🔄 更新</button>
+    <a href="index.html" class="btn">← 戻る</a>
+  </div>
+</div>
+
+<div class="summary" id="summary"></div>
+<div class="list" id="list"><div class="empty-msg">読み込み中...</div></div>
+
+<script>
+var PROXY = "https://bingx-proxy-v83p.onrender.com";
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+  });
+}
+
+function fmtTime(ms) {
+  if (!ms) return "-";
+  var d = new Date(ms);
+  var p = function(n){ return ("0"+n).slice(-2); };
+  return p(d.getMonth()+1)+"/"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes());
+}
+
+function loadLog() {
+  fetch(PROXY+"/trade-log").then(function(r){
+    if (!r.ok) throw new Error("HTTP "+r.status);
+    return r.json();
+  }).then(function(res){
+    var log = res.log || [];
+    var list = document.getElementById("list");
+    var sum = document.getElementById("summary");
+
+    if (log.length === 0) {
+      sum.innerHTML = "";
+      list.innerHTML = "<div class='empty-msg'>取引ログはまだありません</div>";
+      return;
+    }
+
+    var total = 0, wins = 0, counted = 0;
+    log.forEach(function(e){
+      if (e.pnl !== null && e.pnl !== undefined) {
+        total += Number(e.pnl);
+        counted++;
+        if (Number(e.pnl) > 0) wins++;
+      }
+    });
+    var rate = counted ? Math.round(wins / counted * 100) : 0;
+    sum.innerHTML = "<span>件数 <b>"+log.length+"</b></span>"+
+      "<span>合計損益 <b style='color:"+(total>=0?"#00e5a0":"#ff4d6d")+"'>"+(total>=0?"+":"")+total.toFixed(2)+" USDT</b></span>"+
+      "<span>勝率 <b>"+rate+"%</b> ("+wins+"/"+counted+")</span>";
+
+    var html = "";
+    log.forEach(function(e){
+      var pnl = (e.pnl === null || e.pnl === undefined) ? null : Number(e.pnl);
+      var pnlCls = pnl === null ? "nil" : (pnl >= 0 ? "pos" : "neg");
+      var pnlStr = pnl === null ? "-" : ((pnl>=0?"+":"")+pnl.toFixed(2));
+      var sideCls = e.side === "LONG" ? "long" : "short";
+      var sideStr = e.side === "LONG" ? "L" : (e.side === "SHORT" ? "S" : "-");
+      html += "<div class='row'>"+
+        "<span class='c-sym'>"+escapeHtml(String(e.symbol||"").replace("-USDT",""))+"</span>"+
+        "<span class='c-side "+sideCls+"'>"+sideStr+"</span>"+
+        "<span class='c-pnl "+pnlCls+"'>"+pnlStr+"</span>"+
+        "<span class='c-reason'>"+escapeHtml(e.reason||"-")+"</span>"+
+        "<span class='c-time'>"+fmtTime(e.time)+"</span>"+
+      "</div>";
+    });
+    list.innerHTML = html;
+  }).catch(function(e){
+    document.getElementById("list").innerHTML = "<div class='empty-msg'>⚠ 取得失敗: "+escapeHtml(e.message)+"</div>";
+  });
+}
+
+loadLog();
+setInterval(loadLog, 60000);
+</script>
+</body>
+</html>
