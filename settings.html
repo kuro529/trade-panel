@@ -9,7 +9,9 @@
 body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif; min-height: 100vh; padding-bottom: 48px; }
 .header { display: flex; justify-content: space-between; align-items: center; padding: 18px 16px; border-bottom: 1px solid #12121f; position: sticky; top: 0; background: #07070f; z-index: 100; }
 .title { font-size: 18px; font-weight: 800; color: #fff; }
-.btn { padding: 6px 14px; border-radius: 8px; border: 1px solid #00e5a044; background: #00e5a010; color: #00e5a0; cursor: pointer; font-size: 13px; text-decoration: none; display: inline-block; }
+.btn { padding: 6px 14px; border-radius: 8px; border: 1px solid #00e5a044; background: #00e5a010; color: #00e5a0; cursor: pointer; font-size: 13px; text-decoration: none; display: inline-block; white-space: nowrap; }
+.status { padding: 8px 16px; font-size: 12px; color: #555; border-bottom: 1px solid #12121f; }
+.status.err { color: #ff8fa3; }
 .section { padding: 16px; border-bottom: 1px solid #12121f; }
 .section-title { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 12px; }
 .row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
@@ -31,6 +33,8 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
   <div class="title">⚙️ 設定</div>
   <a href="index.html" class="btn">← 戻る</a>
 </div>
+
+<div class="status" id="statusBar">読み込み中...</div>
 
 <div class="section">
   <div class="section-title">自動売買設定</div>
@@ -55,10 +59,10 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 
 <div class="section">
   <div class="section-title">MACD</div>
-  <div class="row"><label>DIF>0&gt;Sig 拡大 点数</label><input type="number" id="macd1" step="0.5"></div>
-  <div class="row"><label>DIF>0&gt;Sig 縮小 点数</label><input type="number" id="macd2" step="0.5"></div>
-  <div class="row"><label>DIF>0≤Sig 点数</label><input type="number" id="macd3" step="0.5"></div>
-  <div class="row"><label>DIF≤0>Sig 点数</label><input type="number" id="macd4" step="0.5"></div>
+  <div class="row"><label>DIF&gt;0&gt;Sig 拡大 点数</label><input type="number" id="macd1" step="0.5"></div>
+  <div class="row"><label>DIF&gt;0&gt;Sig 縮小 点数</label><input type="number" id="macd2" step="0.5"></div>
+  <div class="row"><label>DIF&gt;0≤Sig 点数</label><input type="number" id="macd3" step="0.5"></div>
+  <div class="row"><label>DIF≤0&gt;Sig 点数</label><input type="number" id="macd4" step="0.5"></div>
   <div class="row"><label>DIF≤0≤Sig 縮小 点数</label><input type="number" id="macd5" step="0.5"></div>
   <div class="row"><label>DIF≤0≤Sig 拡大 点数</label><input type="number" id="macd6" step="0.5"></div>
 </div>
@@ -184,28 +188,65 @@ var SETTINGS_DEFAULT = {
   tpslRate50:10, tpslRate30:8, tpslRate10:6, tpslRateLow:4
 };
 
-function loadValues() {
-  fetch(PROXY+"/autotrade").then(function(r){return r.json();}).then(function(d){
-    var s = SETTINGS_DEFAULT;
-    for (var key in SETTINGS_DEFAULT) {
-      var el = document.getElementById(key);
-      if (el) el.value = s[key];
-    }
-  }).catch(function(){});
-  fetch(PROXY+"/trade-settings").then(function(r){return r.json();}).then(function(d){
-    document.getElementById("tradeMargin").value = d.margin;
-    document.getElementById("tradeLeverage").value = d.leverage;
-  }).catch(function(){
-    document.getElementById("tradeMargin").value = 50;
-    document.getElementById("tradeLeverage").value = 15;
-  });
+var loadedOk = { signal: false, trade: false };
+
+function setStatus(text, isErr) {
+  var el = document.getElementById("statusBar");
+  el.textContent = text;
+  el.className = "status" + (isErr ? " err" : "");
+}
+
+function applyDefaults() {
   for (var key in SETTINGS_DEFAULT) {
     var el = document.getElementById(key);
-    if (el && !el.value) el.value = SETTINGS_DEFAULT[key];
+    if (el) el.value = SETTINGS_DEFAULT[key];
   }
 }
 
+function updateStatus() {
+  if (loadedOk.signal && loadedOk.trade) {
+    setStatus("サーバーの保存済み設定を読み込みました", false);
+  } else if (!loadedOk.signal && !loadedOk.trade) {
+    setStatus("⚠ サーバーから読み込めませんでした（初期値を表示中）。このまま保存すると初期値で上書きされます", true);
+  } else {
+    setStatus("⚠ 一部の設定をサーバーから読み込めませんでした（該当項目は初期値）", true);
+  }
+}
+
+function loadValues() {
+  applyDefaults();
+  document.getElementById("tradeMargin").value = 50;
+  document.getElementById("tradeLeverage").value = 15;
+
+  var p1 = fetch(PROXY+"/signal-settings").then(function(r){
+    if (!r.ok) throw new Error("HTTP "+r.status);
+    return r.json();
+  }).then(function(d){
+    if (!d || typeof d !== "object") throw new Error("形式異常");
+    for (var key in SETTINGS_DEFAULT) {
+      var el = document.getElementById(key);
+      var v = d[key];
+      if (el && v !== null && v !== undefined && !isNaN(Number(v))) el.value = Number(v);
+    }
+    loadedOk.signal = true;
+  }).catch(function(){ loadedOk.signal = false; });
+
+  var p2 = fetch(PROXY+"/trade-settings").then(function(r){
+    if (!r.ok) throw new Error("HTTP "+r.status);
+    return r.json();
+  }).then(function(d){
+    if (d && d.margin != null) document.getElementById("tradeMargin").value = d.margin;
+    if (d && d.leverage != null) document.getElementById("tradeLeverage").value = d.leverage;
+    loadedOk.trade = true;
+  }).catch(function(){ loadedOk.trade = false; });
+
+  Promise.all([p1, p2]).then(updateStatus);
+}
+
 function saveAll() {
+  if (!loadedOk.signal) {
+    if (!confirm("サーバーから設定を読み込めていません。このまま保存すると保存済みの設定が画面の値で上書きされます。続けますか？")) return;
+  }
   var newSettings = {};
   for (var key in SETTINGS_DEFAULT) {
     var el = document.getElementById(key);
@@ -221,7 +262,8 @@ function saveAll() {
   Promise.all([
     fetch(PROXY+"/signal-settings?settings="+settingsStr, {method:"POST"}),
     fetch(PROXY+"/trade-settings?margin="+margin+"&leverage="+leverage, {method:"POST"})
-  ]).then(function(){
+  ]).then(function(rs){
+    for (var i=0;i<rs.length;i++) { if (!rs[i].ok) throw new Error("HTTP "+rs[i].status); }
     alert("設定を保存しました");
     window.location.href = "index.html";
   }).catch(function(e){
@@ -230,11 +272,8 @@ function saveAll() {
 }
 
 function resetAll() {
-  if (confirm("すべての設定をデフォルトに戻しますか？")) {
-    for (var key in SETTINGS_DEFAULT) {
-      var el = document.getElementById(key);
-      if (el) el.value = SETTINGS_DEFAULT[key];
-    }
+  if (confirm("すべての設定をデフォルトに戻しますか？（保存を押すまでサーバーには反映されません）")) {
+    applyDefaults();
   }
 }
 
