@@ -10,6 +10,7 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 .header { display: flex; justify-content: space-between; align-items: center; padding: 16px; border-bottom: 1px solid #12121f; position: sticky; top: 0; background: #07070f; z-index: 100; gap: 8px; }
 .title { font-size: 18px; font-weight: 800; color: #fff; white-space: nowrap; }
 .btn { padding: 6px 12px; border-radius: 8px; border: 1px solid #00e5a044; background: #00e5a010; color: #00e5a0; cursor: pointer; font-size: 13px; text-decoration: none; display: inline-block; white-space: nowrap; }
+.btn-clear { border-color: #ff4d6d44; background: #ff4d6d10; color: #ff4d6d; }
 .summary { display: flex; gap: 14px; padding: 10px 16px; border-bottom: 1px solid #12121f; font-size: 12px; color: #888; flex-wrap: wrap; }
 .summary b { color: #fff; font-weight: 700; }
 .list { padding: 4px 0 40px; }
@@ -32,6 +33,7 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
   <div class="title">📋 取引ログ</div>
   <div style="display:flex;gap:8px">
     <button class="btn" onclick="loadLog()">🔄 更新</button>
+    <button class="btn btn-clear" onclick="clearLog()">🗑 クリア</button>
     <a href="index.html" class="btn">← 戻る</a>
   </div>
 </div>
@@ -104,8 +106,22 @@ function loadLog() {
   });
 }
 
+function clearLog() {
+  if (!confirm("取引ログをすべて削除します。元に戻せません。よろしいですか？")) return;
+  var token = prompt("合言葉を入力してください（未設定なら空でOK）") || "";
+  fetch(PROXY+"/trade-log/clear?token="+encodeURIComponent(token), {method:"POST"}).then(function(r){
+    if (!r.ok) throw new Error("HTTP "+r.status);
+    return r.json();
+  }).then(function(){
+    loadLog();
+  }).catch(function(e){
+    alert("削除に失敗しました: "+e.message);
+  });
+}
+
 loadLog();
 setInterval(loadLog, 60000);
+
 </script>
 </body>
 </html>
