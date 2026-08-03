@@ -181,7 +181,9 @@ function toggleAutoTrade() {
       showToast("自動売買", "ON失敗: "+e.message, "sell", 5000);
     });
   } else {
-    postJSON(PROXY+"/autotrade?enabled=false").then(function(){
+    var offToken = getAppToken();
+    if (!offToken) return;
+    postJSON(PROXY+"/autotrade?enabled=false&token="+encodeURIComponent(offToken)).then(function(){
       autoTradeEnabled = false;
       updateAutoTradeBtn();
       showToast("自動売買", "OFFにしました", "sell", 3000);
