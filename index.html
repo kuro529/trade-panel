@@ -227,14 +227,23 @@ function addPair() {
   var sym = input.value.toUpperCase().replace("/","-").trim();
   if (!sym) return;
   if (sym.indexOf("-") < 0) sym = sym + "-USDT";
-  if (WATCHLIST.indexOf(sym) < 0) {
+  if (WATCHLIST.indexOf(sym) >= 0) {
+    input.value = "";
+    document.getElementById("addBar").classList.add("hidden");
+    return;
+  }
+  getJSON(PROXY+"/ticker?symbol="+encodeURIComponent(sym)).then(function(res){
+    var d = res && res.data;
+    var td = Array.isArray(d) ? d[0] : d;
+    if (!td || !td.lastPrice) throw new Error("該当なし");
     WATCHLIST.push(sym);
     saveWatchlist();
     renderWatchlist();
-  }
-  input.value = "";
-  document.getElementById("addBar").classList.add("hidden");
-}
+    input.value = "";
+    document.getElementById("addBar").classList.add("hidden");
+  }).catch(function(){
+    showToast("追加できません", sym.replace("-USDT","")+" はBingXに存在しません", "sell", 4000);
+  });
 
 function removePairConfirm(sym) {
   if (!confirm(sym.replace("-USDT","")+" を一覧から削除しますか？")) return;
