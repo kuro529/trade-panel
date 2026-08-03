@@ -107,9 +107,8 @@ function loadLog() {
 }
 
 function clearLog() {
-  if (!confirm("取引ログをすべて削除します。元に戻せません。よろしいですか？")) return;
-  var token = prompt("合言葉を入力してください（未設定なら空でOK）") || "";
-  fetch(PROXY+"/trade-log/clear?token="+encodeURIComponent(token), {method:"POST"}).then(function(r){
+    if (!confirm("取引ログをすべて削除します。元に戻せません。よろしいですか？")) return;
+    fetch(PROXY+"/trade-log/clear", {method:"POST"}).then(function(r){
     if (!r.ok) throw new Error("HTTP "+r.status);
     return r.json();
   }).then(function(){
