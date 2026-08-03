@@ -10,30 +10,34 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 .header { display: flex; justify-content: space-between; align-items: flex-start; padding: 18px 16px 12px; border-bottom: 1px solid #12121f; flex-wrap: wrap; gap: 10px; position: sticky; top: 0; background: #07070f; z-index: 100; }
 .title { font-size: 20px; font-weight: 800; color: #fff; }
 .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.btn { padding: 6px 14px; border-radius: 8px; border: 1px solid #00e5a044; background: #00e5a010; color: #00e5a0; cursor: pointer; font-size: 13px; }
+.btn { padding: 6px 14px; border-radius: 8px; border: 1px solid #00e5a044; background: #00e5a010; color: #00e5a0; cursor: pointer; font-size: 13px; white-space: nowrap; }
 select { background: #0d0d1a; border: 1px solid #222236; color: #aaa; border-radius: 7px; padding: 5px 10px; font-size: 13px; }
-.btn-notif { padding: 6px 14px; border-radius: 8px; border: 1px solid #5577ff44; background: #5577ff10; color: #5577ff; cursor: pointer; font-size: 13px; }
+.btn-notif { padding: 6px 14px; border-radius: 8px; border: 1px solid #5577ff44; background: #5577ff10; color: #5577ff; cursor: pointer; font-size: 13px; white-space: nowrap; }
 .btn-notif.on { background: #5577ff30; border-color: #5577ff; }
 .add-bar { display: flex; gap: 8px; padding: 10px 16px; background: #0d0d1a; border-bottom: 1px solid #12121f; align-items: center; flex-wrap: wrap; }
 .add-bar input { flex: 1; min-width: 120px; background: #07070f; border: 1px solid #222236; color: #ccc; border-radius: 7px; padding: 6px 12px; font-size: 13px; }
 .hidden { display: none; }
 .section { padding: 14px 16px; border-bottom: 1px solid #12121f; }
-.section-title { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 10px; }
+.section-title { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: baseline; }
+.section-note { font-size: 11px; color: #555; font-weight: 400; }
 .watch-grid { display: flex; gap: 6px; flex-wrap: wrap; }
 .watch-btn { padding: 6px 12px; border-radius: 6px; border: 1px solid #222236; background: #0d0d1a; color: #aaa; cursor: pointer; font-size: 12px; }
 .pos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
 .pos-card { background: #0d0d1a; border: 1px solid #9370db66; border-radius: 12px; padding: 14px; }
+.pos-card.err { border-color: #ff4d6d66; }
 .pos-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
 .pos-symbol { font-weight: 700; font-size: 15px; color: #fff; }
 .pos-side { font-size: 11px; padding: 1px 6px; border-radius: 4px; font-weight: 700; }
 .pos-side.long { background: #00e5a030; color: #00e5a0; }
 .pos-side.short { background: #ff4d6d30; color: #ff4d6d; }
-.pos-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; border-bottom: 1px solid #0f0f1c; }
-.pos-label { color: #666; }
-.pos-val { color: #ccc; font-variant-numeric: tabular-nums; }
+.pos-row { display: flex; justify-content: space-between; font-size: 12px; padding: 3px 0; border-bottom: 1px solid #0f0f1c; gap: 8px; }
+.pos-label { color: #666; white-space: nowrap; }
+.pos-val { color: #ccc; font-variant-numeric: tabular-nums; text-align: right; }
+.pos-err { font-size: 11px; color: #ff4d6d; word-break: break-all; }
 .pnl-pos { color: #00e5a0; font-weight: 700; }
 .pnl-neg { color: #ff4d6d; font-weight: 700; }
 .empty-msg { color: #444; text-align: center; padding: 24px; font-size: 13px; }
+.warn-bar { margin: 0 16px 10px; padding: 8px 12px; border-radius: 8px; background: #ff4d6d18; border: 1px solid #ff4d6d44; color: #ff8fa3; font-size: 12px; }
 .signal-badge { font-size: 10px; padding: 1px 5px; border-radius: 3px; }
 .sig-buy { background: #00e5a030; color: #00e5a0; }
 .sig-sell { background: #ff4d6d30; color: #ff4d6d; }
@@ -69,13 +73,15 @@ select { background: #0d0d1a; border: 1px solid #222236; color: #aaa; border-rad
   <button class="btn" onclick="addPair()">追加</button>
 </div>
 
+<div id="warnArea"></div>
+
 <div class="section">
-  <div class="section-title">監視銘柄</div>
+  <div class="section-title"><span>監視銘柄</span></div>
   <div class="watch-grid" id="watchGrid"></div>
 </div>
 
 <div class="section">
-  <div class="section-title">保有ポジション</div>
+  <div class="section-title"><span>保有ポジション</span><span class="section-note" id="posNote"></span></div>
   <div class="pos-grid" id="posGrid">
     <div class="empty-msg">読み込み中...</div>
   </div>
@@ -116,12 +122,18 @@ function postJSON(url) {
   });
 }
 
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, function(c){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+  });
+}
+
 function showToast(title, message, type, duration) {
   duration = duration || 4000;
   var wrap = document.getElementById("toastWrap");
   var toast = document.createElement("div");
   toast.className = "toast " + type;
-  toast.innerHTML = "<div style='font-weight:800'>"+title+"</div><div style='font-size:12px;margin-top:2px'>"+message+"</div>";
+  toast.innerHTML = "<div style='font-weight:800'>"+escapeHtml(title)+"</div><div style='font-size:12px;margin-top:2px'>"+escapeHtml(message)+"</div>";
   wrap.appendChild(toast);
   setTimeout(function(){ toast.style.animation="slideOut 0.3s ease forwards"; setTimeout(function(){ if(toast.parentNode) toast.parentNode.removeChild(toast); },300); }, duration);
 }
@@ -174,7 +186,7 @@ function renderWatchlist() {
   var html = "";
   for (var i=0;i<WATCHLIST.length;i++) {
     var sym = WATCHLIST[i];
-    html += "<button class='watch-btn' ontouchstart='startLongPress(\""+sym+"\")' ontouchend='cancelLongPress()'>"+sym.replace("-USDT","")+"</button>";
+    html += "<button class='watch-btn' ontouchstart='startLongPress(\""+sym+"\")' ontouchend='cancelLongPress()'>"+escapeHtml(sym.replace("-USDT",""))+"</button>";
   }
   grid.innerHTML = html || "<div class='empty-msg' style='padding:8px'>監視銘柄がありません</div>";
 }
@@ -212,14 +224,34 @@ function removePairConfirm(sym) {
   if (autoTradeEnabled) syncWatchlist().catch(function(){});
 }
 
+function toNum(v) {
+  if (v === null || v === undefined || v === "") return null;
+  var n = Number(v);
+  return isNaN(n) ? null : n;
+}
+
 function fmtPrice(p) {
-  if (p==null) return "-";
+  p = toNum(p);
+  if (p === null) return "-";
   if (p>=10000) return p.toFixed(1);
   if (p>=10) return p.toFixed(2);
   if (p>=1) return p.toFixed(3);
   if (p>=0.1) return p.toFixed(4);
   if (p>=0.01) return p.toFixed(5);
   return p.toFixed(6);
+}
+
+function fmtQty(q) {
+  q = toNum(q);
+  if (q === null) return "-";
+  var s = (Math.abs(q) >= 1) ? q.toFixed(4) : q.toFixed(8);
+  if (s.indexOf(".") >= 0) s = s.replace(/0+$/, "").replace(/\.$/, "");
+  return s;
+}
+
+function fmtNum(v) {
+  var n = toNum(v);
+  return n === null ? "-" : n;
 }
 
 function signalBadgeClass(type) {
@@ -229,38 +261,61 @@ function signalBadgeClass(type) {
   return "sig-hold";
 }
 
+function setWarn(msg) {
+  var area = document.getElementById("warnArea");
+  area.innerHTML = msg ? "<div class='warn-bar'>"+escapeHtml(msg)+"</div>" : "";
+}
+
 function loadPositions() {
   getJSON(PROXY+"/position-details").then(function(res){
     var grid = document.getElementById("posGrid");
+    var note = document.getElementById("posNote");
     var list = res.positions || [];
+
+    if (res.error) {
+      setWarn((res.stale ? "最新化に失敗（前回の値を表示中）: " : "取得エラー: ") + res.error);
+    } else {
+      setWarn("");
+    }
+
+    var now = new Date();
+    note.textContent = "更新 " + ("0"+now.getHours()).slice(-2) + ":" + ("0"+now.getMinutes()).slice(-2) + ":" + ("0"+now.getSeconds()).slice(-2);
+
     if (list.length === 0) {
       grid.innerHTML = "<div class='empty-msg'>保有ポジションはありません</div>";
       return;
     }
     var html = "";
     list.forEach(function(p){
-      var pnl = p.unrealized_profit;
-      var pnlClass = (pnl >= 0) ? "pnl-pos" : "pnl-neg";
-      var pnlStr = pnl != null ? (pnl>=0?"+":"")+pnl.toFixed(2)+" USDT" : "-";
+      if (p.error) {
+        html += "<div class='pos-card err'>"+
+          "<div class='pos-header'><span class='pos-symbol'>"+escapeHtml(String(p.symbol||"?").replace("-","/"))+"</span></div>"+
+          "<div class='pos-err'>"+escapeHtml(p.error)+"</div>"+
+        "</div>";
+        return;
+      }
+      var pnl = toNum(p.unrealized_profit);
+      var pnlClass = (pnl === null) ? "pos-val" : (pnl >= 0 ? "pnl-pos" : "pnl-neg");
+      var pnlStr = (pnl === null) ? "-" : ((pnl>=0?"+":"")+pnl.toFixed(2)+" USDT");
       var sideClass = p.side === "LONG" ? "long" : "short";
-      var sideLabel = p.side === "LONG" ? "ロング" : "ショート";
+      var sideLabel = p.side === "LONG" ? "ロング" : (p.side === "SHORT" ? "ショート" : "-");
       html += "<div class='pos-card'>"+
         "<div class='pos-header'>"+
-          "<span class='pos-symbol'>"+p.symbol.replace("-","/")+"</span>"+
+          "<span class='pos-symbol'>"+escapeHtml(String(p.symbol||"").replace("-","/"))+"</span>"+
           "<span class='pos-side "+sideClass+"'>"+sideLabel+"</span>"+
         "</div>"+
         "<div class='pos-row'><span class='pos-label'>現在価格</span><span class='pos-val'>"+fmtPrice(p.current_price)+"</span></div>"+
         "<div class='pos-row'><span class='pos-label'>取得価格</span><span class='pos-val'>"+fmtPrice(p.entry_price)+"</span></div>"+
-        "<div class='pos-row'><span class='pos-label'>数量</span><span class='pos-val'>"+p.qty+"</span></div>"+
+        "<div class='pos-row'><span class='pos-label'>数量</span><span class='pos-val'>"+fmtQty(p.qty)+"</span></div>"+
         "<div class='pos-row'><span class='pos-label'>SL</span><span class='pos-val'>"+fmtPrice(p.sl_price)+"</span></div>"+
         "<div class='pos-row'><span class='pos-label'>損益</span><span class='"+pnlClass+"'>"+pnlStr+"</span></div>"+
-        "<div class='pos-row'><span class='pos-label'>取得時シグナル</span><span class='pos-val'><span class='signal-badge "+signalBadgeClass(p.entry_signal)+"'>"+(p.entry_signal||"-")+"</span> "+(p.entry_score!=null?p.entry_score:"-")+" / トレンド:"+(p.entry_trend!=null?p.entry_trend:"-")+"</span></div>"+
-        "<div class='pos-row' style='border-bottom:none'><span class='pos-label'>現在シグナル</span><span class='pos-val'><span class='signal-badge "+signalBadgeClass(p.current_signal)+"'>"+(p.current_signal||"-")+"</span> "+(p.current_score!=null?p.current_score:"-")+" / トレンド:"+(p.current_trend!=null?p.current_trend:"-")+"</span></div>"+
+        "<div class='pos-row'><span class='pos-label'>取得時シグナル</span><span class='pos-val'><span class='signal-badge "+signalBadgeClass(p.entry_signal)+"'>"+escapeHtml(p.entry_signal||"-")+"</span> "+fmtNum(p.entry_score)+" / トレンド:"+fmtNum(p.entry_trend)+"</span></div>"+
+        "<div class='pos-row' style='border-bottom:none'><span class='pos-label'>現在シグナル</span><span class='pos-val'><span class='signal-badge "+signalBadgeClass(p.current_signal)+"'>"+escapeHtml(p.current_signal||"-")+"</span> "+fmtNum(p.current_score)+" / トレンド:"+fmtNum(p.current_trend)+"</span></div>"+
       "</div>";
     });
     grid.innerHTML = html;
   }).catch(function(e){
-    document.getElementById("posGrid").innerHTML = "<div class='empty-msg'>⚠ 取得失敗: "+e.message+"</div>";
+    document.getElementById("posGrid").innerHTML = "<div class='empty-msg'>⚠ 取得失敗: "+escapeHtml(e.message)+"</div>";
   });
 }
 
@@ -295,7 +350,7 @@ renderWatchlist();
 checkAutoTradeStatus();
 loadPositions();
 setInterval(loadPositions, 30000);
-setInterval(checkAutoTradeStatus, 30000);
+setInterval(checkAutoTradeStatus, 60000);
 </script>
 </body>
 </html>
