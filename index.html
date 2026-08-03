@@ -18,10 +18,11 @@ select { background: #0d0d1a; border: 1px solid #222236; color: #aaa; border-rad
 .add-bar input { flex: 1; min-width: 120px; background: #07070f; border: 1px solid #222236; color: #ccc; border-radius: 7px; padding: 6px 12px; font-size: 13px; }
 .hidden { display: none; }
 .section { padding: 14px 16px; border-bottom: 1px solid #12121f; }
-.section-title { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: baseline; }
-.section-note { font-size: 11px; color: #555; font-weight: 400; }
+.section-title { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.section-note { font-size: 11px; color: #555; font-weight: 400; white-space: nowrap; }
 .watch-grid { display: flex; gap: 6px; flex-wrap: wrap; }
-.watch-btn { padding: 6px 12px; border-radius: 6px; border: 1px solid #222236; background: #0d0d1a; color: #aaa; cursor: pointer; font-size: 12px; }
+.watch-btn { padding: 6px 12px; border-radius: 6px; border: 1px solid #222236; background: #0d0d1a; color: #666; cursor: pointer; font-size: 12px; }
+.watch-btn.on { border-color: #00e5a0; background: #00e5a018; color: #00e5a0; font-weight: 700; }
 .pos-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
 .pos-card { background: #0d0d1a; border: 1px solid #9370db66; border-radius: 12px; padding: 14px; }
 .pos-card.err { border-color: #ff4d6d66; }
@@ -77,7 +78,7 @@ select { background: #0d0d1a; border: 1px solid #222236; color: #aaa; border-rad
 <div id="warnArea"></div>
 
 <div class="section">
-  <div class="section-title"><span>監視銘柄</span></div>
+  <div class="section-title"><span id="watchTitle">監視銘柄</span><span class="section-note">タップで監視ON/OFF・長押しで削除</span></div>
   <div class="watch-grid" id="watchGrid"></div>
 </div>
 
@@ -143,6 +144,11 @@ var WATCHLIST = [];
 try { WATCHLIST = JSON.parse(localStorage.getItem("panelWatchlist") || "[]"); } catch(e) {}
 function saveWatchlist() { try { localStorage.setItem("panelWatchlist", JSON.stringify(WATCHLIST)); } catch(e) {} }
 
+var ACTIVE = null;
+try { ACTIVE = JSON.parse(localStorage.getItem("panelActive")); } catch(e) {}
+if (!ACTIVE) ACTIVE = WATCHLIST.slice();
+function saveActive() { try { localStorage.setItem("panelActive", JSON.stringify(ACTIVE)); } catch(e) {} }
+
 var autoTradeEnabled = false;
 
 function updateAutoTradeBtn() {
@@ -152,7 +158,7 @@ function updateAutoTradeBtn() {
 }
 
 function syncWatchlist() {
-  var symbols = WATCHLIST.join(",");
+  var symbols = ACTIVE.join(",");
   var interval = document.getElementById("intervalSelect").value;
   return postJSON(PROXY+"/watchlist?symbols="+encodeURIComponent(symbols)+"&interval="+interval);
 }
@@ -161,6 +167,9 @@ function toggleAutoTrade() {
   if (!autoTradeEnabled) {
     var token = getAppToken();
     if (!token) return;
+    if (ACTIVE.length === 0) {
+      if (!confirm("監視中の銘柄が0件です。このままONにしますか？")) return;
+    }
     if (!confirm("自動売買をONにします。よろしいですか？")) return;
     syncWatchlist().then(function(){
       return postJSON(PROXY+"/autotrade?enabled=true&token="+encodeURIComponent(token));
@@ -187,14 +196,26 @@ function renderWatchlist() {
   var html = "";
   for (var i=0;i<WATCHLIST.length;i++) {
     var sym = WATCHLIST[i];
-    html += "<button class='watch-btn' ontouchstart='startLongPress(\""+sym+"\")' ontouchend='cancelLongPress()'>"+escapeHtml(sym.replace("-USDT",""))+"</button>";
+    var on = ACTIVE.indexOf(sym) >= 0 ? " on" : "";
+    html += "<button class='watch-btn"+on+"' onclick='toggleWatch(\""+sym+"\")' ontouchstart='startLongPress(\""+sym+"\")' ontouchend='cancelLongPress()'>"+escapeHtml(sym.replace("-USDT",""))+"</button>";
   }
   grid.innerHTML = html || "<div class='empty-msg' style='padding:8px'>監視銘柄がありません</div>";
+  document.getElementById("watchTitle").textContent = "監視銘柄 (" + ACTIVE.length + "/" + WATCHLIST.length + ")";
 }
 
 var longPressTimer = null;
-function startLongPress(sym) { longPressTimer = setTimeout(function() { removePairConfirm(sym); }, 700); }
+var longPressFired = false;
+function startLongPress(sym) { longPressFired = false; longPressTimer = setTimeout(function() { longPressFired = true; removePairConfirm(sym); }, 700); }
 function cancelLongPress() { if (longPressTimer) { clearTimeout(longPressTimer); longPressTimer = null; } }
+
+function toggleWatch(sym) {
+  if (longPressFired) { longPressFired = false; return; }
+  var idx = ACTIVE.indexOf(sym);
+  if (idx >= 0) ACTIVE.splice(idx, 1); else ACTIVE.push(sym);
+  saveActive();
+  renderWatchlist();
+  syncWatchlist().catch(function(){});
+}
 
 function toggleAdd() {
   var bar = document.getElementById("addBar");
@@ -210,19 +231,21 @@ function addPair() {
     WATCHLIST.push(sym);
     saveWatchlist();
     renderWatchlist();
-    if (autoTradeEnabled) syncWatchlist().catch(function(){});
   }
   input.value = "";
   document.getElementById("addBar").classList.add("hidden");
 }
 
 function removePairConfirm(sym) {
-  if (!confirm(sym.replace("-USDT","")+" を監視から外しますか？")) return;
+  if (!confirm(sym.replace("-USDT","")+" を一覧から削除しますか？")) return;
   var idx = WATCHLIST.indexOf(sym);
   if (idx >= 0) WATCHLIST.splice(idx, 1);
+  var aidx = ACTIVE.indexOf(sym);
+  if (aidx >= 0) ACTIVE.splice(aidx, 1);
   saveWatchlist();
+  saveActive();
   renderWatchlist();
-  if (autoTradeEnabled) syncWatchlist().catch(function(){});
+  syncWatchlist().catch(function(){});
 }
 
 function toNum(v) {
@@ -279,23 +302,22 @@ function loadPositions() {
       setWarn("");
     }
 
-    var now = new Date();
     var totalPnl = 0, pnlCount = 0;
     list.forEach(function(p){
       var v = toNum(p.unrealized_profit);
       if (v !== null) { totalPnl += v; pnlCount++; }
     });
-    var titleEl = document.getElementById("posTitle");
     var pnlHtml = "";
     if (pnlCount > 0) {
       pnlHtml = " <span style='font-size:13px;color:" + (totalPnl >= 0 ? "#00e5a0" : "#ff4d6d") + "'>" +
                 (totalPnl >= 0 ? "+" : "") + totalPnl.toFixed(2) + " USDT</span>";
     }
-    titleEl.innerHTML = "保有ポジション (" + list.length + ")" + pnlHtml;
+    document.getElementById("posTitle").innerHTML = "保有ポジション (" + list.length + ")" + pnlHtml;
+
+    var now = new Date();
     note.textContent = "更新 " + ("0"+now.getHours()).slice(-2) + ":" + ("0"+now.getMinutes()).slice(-2) + ":" + ("0"+now.getSeconds()).slice(-2);
 
     if (list.length === 0) {
-      
       grid.innerHTML = "<div class='empty-msg'>保有ポジションはありません</div>";
       return;
     }
@@ -357,7 +379,7 @@ function checkAutoTradeStatus() {
 }
 
 document.getElementById("intervalSelect").addEventListener("change", function(){
-  if (autoTradeEnabled) syncWatchlist().catch(function(){});
+  syncWatchlist().catch(function(){});
 });
 
 renderWatchlist();
