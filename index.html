@@ -279,8 +279,19 @@ function loadPositions() {
       setWarn("");
     }
 
-        var now = new Date();
-    document.getElementById("posTitle").textContent = "保有ポジション (" + list.length + ")";
+    var now = new Date();
+    var totalPnl = 0, pnlCount = 0;
+    list.forEach(function(p){
+      var v = toNum(p.unrealized_profit);
+      if (v !== null) { totalPnl += v; pnlCount++; }
+    });
+    var titleEl = document.getElementById("posTitle");
+    var pnlHtml = "";
+    if (pnlCount > 0) {
+      pnlHtml = " <span style='font-size:13px;color:" + (totalPnl >= 0 ? "#00e5a0" : "#ff4d6d") + "'>" +
+                (totalPnl >= 0 ? "+" : "") + totalPnl.toFixed(2) + " USDT</span>";
+    }
+    titleEl.innerHTML = "保有ポジション (" + list.length + ")" + pnlHtml;
     note.textContent = "更新 " + ("0"+now.getHours()).slice(-2) + ":" + ("0"+now.getMinutes()).slice(-2) + ":" + ("0"+now.getSeconds()).slice(-2);
 
     if (list.length === 0) {
