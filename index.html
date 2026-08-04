@@ -11,6 +11,7 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 .title { font-size: 20px; font-weight: 800; color: #fff; }
 .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .btn { padding: 6px 14px; border-radius: 8px; border: 1px solid #00e5a044; background: #00e5a010; color: #00e5a0; cursor: pointer; font-size: 13px; white-space: nowrap; }
+.btn.err { border-color: #ff4d6d; background: #ff4d6d20; color: #ff4d6d; font-weight: 700; }
 select { background: #0d0d1a; border: 1px solid #222236; color: #aaa; border-radius: 7px; padding: 5px 10px; font-size: 13px; }
 .btn-notif { padding: 6px 14px; border-radius: 8px; border: 1px solid #5577ff44; background: #5577ff10; color: #5577ff; cursor: pointer; font-size: 13px; white-space: nowrap; }
 .btn-notif.on { background: #5577ff30; border-color: #5577ff; }
@@ -66,6 +67,7 @@ select { background: #0d0d1a; border: 1px solid #222236; color: #aaa; border-rad
     <a href="log.html" class="btn" style="text-decoration:none;display:inline-block">📋 ログ</a>
     <button class="btn" onclick="toggleAdd()">＋ 追加</button>
     <button class="btn" onclick="loadPositions()">🔄 更新</button>
+    <button class="btn" id="errBtn" onclick="showErrorInfo()">エラー</button>
     <a href="settings.html" class="btn" style="text-decoration:none;display:inline-block">⚙️ 設定</a>
     <button class="btn" onclick="clearCacheOnly()">🧹 ﾘﾛｰﾄﾞ</button>
   </div>
@@ -157,7 +159,7 @@ function showToast(title, message, type, duration) {
 
 var WATCHLIST = [];
 try { WATCHLIST = JSON.parse(localStorage.getItem("panelWatchlist") || "[]"); } catch (e) { WATCHLIST = []; }
-if (!WATCHLIST || !WATCHLIST.length) WATCHLIST = WATCHLIST || [];
+if (!WATCHLIST) WATCHLIST = [];
 function saveWatchlist() { try { localStorage.setItem("panelWatchlist", JSON.stringify(WATCHLIST)); } catch (e) {} }
 
 var ACTIVE = null;
@@ -166,6 +168,7 @@ if (!ACTIVE) ACTIVE = WATCHLIST.slice();
 function saveActive() { try { localStorage.setItem("panelActive", JSON.stringify(ACTIVE)); } catch (e) {} }
 
 var autoTradeEnabled = false;
+var errorInfo = null;
 
 function updateAutoTradeBtn() {
   var btn = document.getElementById("autoTradeBtn");
@@ -192,6 +195,7 @@ function toggleAutoTrade() {
     }).then(function() {
       autoTradeEnabled = true;
       updateAutoTradeBtn();
+      checkErrorStatus();
       showToast("自動売買", "ONにしました", "buy", 4000);
     }).catch(function(e) {
       showToast("自動売買", "ON失敗: " + e.message, "sell", 5000);
@@ -205,6 +209,70 @@ function toggleAutoTrade() {
       showToast("自動売買", "OFF失敗: " + e.message, "sell", 5000);
     });
   }
+}
+
+function fmtTimeMs(ms) {
+  if (!ms) return "-";
+  var d = new Date(ms);
+  var p = function(n) { return ("0" + n).slice(-2); };
+  return p(d.getMonth() + 1) + "/" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
+}
+
+function checkErrorStatus() {
+  getJSON(PROXY + "/error-status").then(function(res) {
+    errorInfo = res;
+    var btn = document.getElementById("errBtn");
+    btn.classList.toggle("err", !!res.has_error);
+  }).catch(function() {});
+}
+
+function showErrorInfo() {
+  if (!errorInfo) {
+    alert("状態を取得できていません。少し待ってからもう一度お試しください。");
+    checkErrorStatus();
+    return;
+  }
+  var e = errorInfo;
+
+  if (e.entry_blocked) {
+    var msg = "新規エントリーが停止中です。\n\n"
+      + "理由: " + (e.entry_block_reason || "不明") + "\n"
+      + "発生時刻: " + fmtTimeMs(e.entry_block_time) + "\n\n"
+      + "決済・SL更新・表示更新は動作しています。\n"
+      + "証拠金: " + e.margin + " USDT / レバレッジ: " + e.leverage + "倍\n\n"
+      + "新規エントリーを再開しますか？\n（残高が不足したままだと再度停止します）";
+    if (confirm(msg)) {
+      postJSON(PROXY + "/resume-entry").then(function() {
+        showToast("エントリー再開", "新規エントリーを再開しました", "buy", 4000);
+        checkErrorStatus();
+      }).catch(function(err) {
+        showToast("エラー", "再開に失敗: " + err.message, "sell", 5000);
+      });
+    }
+    return;
+  }
+
+  if (!e.auto_trade_enabled && e.disable_reason) {
+    alert("自動売買が停止しました。\n\n"
+      + "理由: " + e.disable_reason + "\n"
+      + "発生時刻: " + fmtTimeMs(e.disable_time) + "\n\n"
+      + "設定を確認して修正してから、🤖ボタンでONに戻してください。\n"
+      + "（レバレッジ上限・最小注文数量・APIキー権限などが原因になります）");
+    return;
+  }
+
+  if (e.sl_error) {
+    if (confirm("SL関連の警告があります。\n\n"
+      + e.sl_error + "\n\n"
+      + "SLは3分ごとに自動補完されます。\nこの警告を消しますか？")) {
+      postJSON(PROXY + "/clear-errors").then(function() {
+        checkErrorStatus();
+      }).catch(function() {});
+    }
+    return;
+  }
+
+  alert("エラーはありません。");
 }
 
 function renderWatchlist() {
@@ -432,9 +500,11 @@ document.getElementById("intervalSelect").addEventListener("change", function() 
 
 renderWatchlist();
 checkAutoTradeStatus();
+checkErrorStatus();
 loadPositions();
 setInterval(loadPositions, 30000);
 setInterval(checkAutoTradeStatus, 60000);
+setInterval(checkErrorStatus, 60000);
 </script>
 </body>
 </html>
