@@ -6,7 +6,7 @@
 <title>⚙️ 設定</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif; min-height: 100vh; padding-bottom: 48px; }
+body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif; min-height: 100vh; padding-bottom: 0; }
 .header { display: flex; justify-content: space-between; align-items: center; padding: 18px 16px; border-bottom: 1px solid #12121f; position: sticky; top: 0; background: #07070f; z-index: 100; }
 .title { font-size: 18px; font-weight: 800; color: #fff; }
 .btn { padding: 6px 14px; border-radius: 8px; border: 1px solid #00e5a044; background: #00e5a010; color: #00e5a0; cursor: pointer; font-size: 13px; text-decoration: none; display: inline-block; white-space: nowrap; }
@@ -22,7 +22,7 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 .pair-inputs { display: flex; gap: 6px; align-items: center; }
 .pair-inputs span { font-size: 10px; color: #555; }
 .pair-inputs input { width: 70px; background: #0d0d1a; border: 1px solid #222236; color: #ccc; border-radius: 6px; padding: 6px 8px; font-size: 13px; text-align: right; }
-.save-bar { position: fixed; bottom: 0; left: 0; right: 0; background: #0d0d1a; border-top: 1px solid #222236; padding: 12px 16px; display: flex; gap: 10px; }
+.save-bar { position: sticky; bottom: 0; background: #0d0d1a; border-top: 1px solid #222236; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); display: flex; gap: 10px; z-index: 200; }
 .save-bar .btn { flex: 1; text-align: center; padding: 10px; font-size: 14px; }
 .btn-save { background: #00e5a0; color: #000; border: none; }
 .btn-reset { background: #ff4d6d10; color: #ff4d6d; border: 1px solid #ff4d6d44; }
@@ -159,8 +159,6 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
     </div>
   </div>
 </div>
-
-<div style="height:70px"></div>
 
 <div class="save-bar">
   <button class="btn btn-reset" onclick="resetAll()">リセット</button>
