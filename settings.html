@@ -14,6 +14,7 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 .status.err { color: #ff8fa3; }
 .section { padding: 16px; border-bottom: 1px solid #12121f; }
 .section-title { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 12px; }
+.section-note { font-size: 11px; color: #555; font-weight: 400; margin-bottom: 10px; }
 .row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .row label { flex: 1; font-size: 12px; color: #888; }
 .row input { width: 80px; background: #0d0d1a; border: 1px solid #222236; color: #ccc; border-radius: 6px; padding: 6px 8px; font-size: 13px; text-align: right; }
@@ -55,6 +56,13 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
   <div class="row"><label>弱</label><input type="number" id="thWeak" step="0.5"></div>
   <div class="row"><label>中</label><input type="number" id="thMid" step="0.5"></div>
   <div class="row"><label>強</label><input type="number" id="thStrong" step="0.5"></div>
+</div>
+
+<div class="section">
+  <div class="section-title">HOLD判定</div>
+  <div class="section-note">スコア＋トレンド指数の合計で判定します</div>
+  <div class="row"><label>HOLD+ の下限（この値以上）</label><input type="number" id="holdPlus" step="0.5"></div>
+  <div class="row"><label>HOLD- の上限（この値以下）</label><input type="number" id="holdMinus" step="0.5"></div>
 </div>
 
 <div class="section">
@@ -183,6 +191,7 @@ var SETTINGS_DEFAULT = {
   frLow2:-0.0001, frLow2Score:1.5,
   frLow3:-0.00005, frLow3Score:1,
   thWeak:3.5, thMid:5.5, thStrong:7.5,
+  holdPlus:1, holdMinus:-1,
   tpslRate50:10, tpslRate30:8, tpslRate10:6, tpslRateLow:4
 };
 
@@ -252,6 +261,10 @@ function saveAll() {
       var v = parseFloat(el.value);
       newSettings[key] = isNaN(v) ? SETTINGS_DEFAULT[key] : v;
     }
+  }
+  if (newSettings.holdMinus > newSettings.holdPlus) {
+    alert("HOLD- の上限が HOLD+ の下限を超えています。値を見直してください。");
+    return;
   }
   var margin = parseFloat(document.getElementById("tradeMargin").value) || 50;
   var leverage = parseInt(document.getElementById("tradeLeverage").value) || 15;
