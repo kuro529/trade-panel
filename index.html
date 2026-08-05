@@ -262,9 +262,9 @@ function showCooldownInfo() {
   for (var i = 0; i < list.length; i++) {
     var c = list[i];
     var sideLabel = c.side === "LONG" ? "ロング" : "ショート";
-    lines.push(c.symbol.replace("-USDT", "") + " " + sideLabel + "  残り " + fmtRemain(c.remaining_sec));
+    lines.push(c.symbol.replace("-USDT", "") + " " + sideLabel + "  残り " + fmtRemain(c.remaining_sec) + "  " + (c.reason || "SL/手動決済"));
   }
-  var msg = "SLクールダウン中（同方向のエントリーを停止）\n\n"
+  var msg = "クールダウン中（同方向のエントリーを停止）\n\n"
     + lines.join("\n") + "\n\n"
     + "すべて解除しますか？";
   if (confirm(msg)) {
