@@ -11,7 +11,8 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 .title { font-size: 18px; font-weight: 800; color: #fff; white-space: nowrap; }
 .btn { padding: 6px 12px; border-radius: 8px; border: 1px solid #00e5a044; background: #00e5a010; color: #00e5a0; cursor: pointer; font-size: 13px; text-decoration: none; display: inline-block; white-space: nowrap; }
 .btn-clear { border-color: #ff4d6d44; background: #ff4d6d10; color: #ff4d6d; }
-.summary { display: flex; gap: 14px; padding: 10px 16px; border-bottom: 1px solid #12121f; font-size: 12px; color: #888; flex-wrap: wrap; }
+.summary { display: flex; gap: 14px; padding: 10px 16px; font-size: 12px; color: #888; flex-wrap: wrap; }
+.summary.total { border-bottom: 1px solid #12121f; padding-top: 0; color: #666; }
 .summary b { color: #fff; font-weight: 700; }
 .list { padding: 4px 0 40px; }
 .row { display: flex; align-items: center; gap: 8px; padding: 9px 16px; border-bottom: 1px solid #10101c; font-size: 12px; white-space: nowrap; }
@@ -39,6 +40,7 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 </div>
 
 <div class="summary" id="summary"></div>
+<div class="summary total" id="summaryTotal"></div>
 <div class="list" id="list"><div class="empty-msg">読み込み中...</div></div>
 
 <script>
@@ -46,7 +48,11 @@ var PROXY = "https://bingx-proxy-v83p.onrender.com";
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, function(c){
-    return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c];
+    if (c === "&") return "&amp;";
+    if (c === "<") return "&lt;";
+    if (c === ">") return "&gt;";
+    if (c === '"') return "&quot;";
+    return "&#39;";
   });
 }
 
@@ -57,6 +63,10 @@ function fmtTime(ms) {
   return p(d.getMonth()+1)+"/"+p(d.getDate())+" "+p(d.getHours())+":"+p(d.getMinutes());
 }
 
+function pnlColor(v) {
+  return v >= 0 ? "#00e5a0" : "#ff4d6d";
+}
+
 function loadLog() {
   fetch(PROXY+"/trade-log").then(function(r){
     if (!r.ok) throw new Error("HTTP "+r.status);
@@ -65,6 +75,19 @@ function loadLog() {
     var log = res.log || [];
     var list = document.getElementById("list");
     var sum = document.getElementById("summary");
+    var sumTotal = document.getElementById("summaryTotal");
+
+    var totalCount = res.total_count || 0;
+    var totalPnl = Number(res.total_pnl || 0);
+    var totalWin = res.total_win || 0;
+    if (totalCount > 0) {
+      var trate = Math.round(totalWin / totalCount * 100);
+      sumTotal.innerHTML = "<span>累計 <b>"+totalCount+"</b></span>"+
+        "<span>累計損益 <b style='color:"+pnlColor(totalPnl)+"'>"+(totalPnl>=0?"+":"")+totalPnl.toFixed(2)+" USDT</b></span>"+
+        "<span>勝率 <b>"+trate+"%</b> ("+totalWin+"/"+totalCount+")</span>";
+    } else {
+      sumTotal.innerHTML = "";
+    }
 
     if (log.length === 0) {
       sum.innerHTML = "";
@@ -82,7 +105,7 @@ function loadLog() {
     });
     var rate = counted ? Math.round(wins / counted * 100) : 0;
     sum.innerHTML = "<span>件数 <b>"+log.length+"</b></span>"+
-      "<span>合計損益 <b style='color:"+(total>=0?"#00e5a0":"#ff4d6d")+"'>"+(total>=0?"+":"")+total.toFixed(2)+" USDT</b></span>"+
+      "<span>合計損益 <b style='color:"+pnlColor(total)+"'>"+(total>=0?"+":"")+total.toFixed(2)+" USDT</b></span>"+
       "<span>勝率 <b>"+rate+"%</b> ("+wins+"/"+counted+")</span>";
 
     var html = "";
@@ -107,8 +130,8 @@ function loadLog() {
 }
 
 function clearLog() {
-    if (!confirm("取引ログをすべて削除します。元に戻せません。よろしいですか？")) return;
-    fetch(PROXY+"/trade-log/clear", {method:"POST"}).then(function(r){
+  if (!confirm("取引ログと累計をすべて削除します。元に戻せません。よろしいですか？")) return;
+  fetch(PROXY+"/trade-log/clear", {method:"POST"}).then(function(r){
     if (!r.ok) throw new Error("HTTP "+r.status);
     return r.json();
   }).then(function(){
@@ -120,7 +143,6 @@ function clearLog() {
 
 loadLog();
 setInterval(loadLog, 60000);
-
 </script>
 </body>
 </html>
