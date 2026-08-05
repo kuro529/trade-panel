@@ -12,6 +12,8 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .btn { padding: 6px 14px; border-radius: 8px; border: 1px solid #00e5a044; background: #00e5a010; color: #00e5a0; cursor: pointer; font-size: 13px; white-space: nowrap; }
 .btn.err { border-color: #ff4d6d; background: #ff4d6d20; color: #ff4d6d; font-weight: 700; }
+.btn-gray { padding: 6px 14px; border-radius: 8px; border: 1px solid #33334a; background: #1a1a28; color: #888; cursor: pointer; font-size: 13px; white-space: nowrap; }
+.btn-gray.on { border-color: #ff4d6d; background: #ff4d6d20; color: #ff4d6d; font-weight: 700; }
 select { background: #0d0d1a; border: 1px solid #222236; color: #aaa; border-radius: 7px; padding: 5px 10px; font-size: 13px; }
 .btn-notif { padding: 6px 14px; border-radius: 8px; border: 1px solid #5577ff44; background: #5577ff10; color: #5577ff; cursor: pointer; font-size: 13px; white-space: nowrap; }
 .btn-notif.on { background: #5577ff30; border-color: #5577ff; }
@@ -66,7 +68,7 @@ select { background: #0d0d1a; border: 1px solid #222236; color: #aaa; border-rad
     <button class="btn-notif" id="autoTradeBtn" onclick="toggleAutoTrade()">🤖 自動 OFF</button>
     <a href="log.html" class="btn" style="text-decoration:none;display:inline-block">📋 ログ</a>
     <button class="btn" onclick="toggleAdd()">＋ 追加</button>
-    <button class="btn" onclick="loadPositions()">🔄 更新</button>
+    <button class="btn-gray" id="slBtn" onclick="showCooldownInfo()">SL</button>
     <button class="btn" id="errBtn" onclick="showErrorInfo()">エラー</button>
     <a href="settings.html" class="btn" style="text-decoration:none;display:inline-block">⚙️ 設定</a>
     <button class="btn" onclick="clearCacheOnly()">🧹 ﾘﾛｰﾄﾞ</button>
@@ -169,6 +171,7 @@ function saveActive() { try { localStorage.setItem("panelActive", JSON.stringify
 
 var autoTradeEnabled = false;
 var errorInfo = null;
+var cooldownInfo = null;
 
 function updateAutoTradeBtn() {
   var btn = document.getElementById("autoTradeBtn");
@@ -218,12 +221,60 @@ function fmtTimeMs(ms) {
   return p(d.getMonth() + 1) + "/" + p(d.getDate()) + " " + p(d.getHours()) + ":" + p(d.getMinutes());
 }
 
+function fmtRemain(sec) {
+  if (sec <= 0) return "まもなく解除";
+  var m = Math.floor(sec / 60);
+  var s = sec % 60;
+  if (m >= 60) {
+    var h = Math.floor(m / 60);
+    return h + "時間" + (m % 60) + "分";
+  }
+  if (m > 0) return m + "分" + ("0" + s).slice(-2) + "秒";
+  return s + "秒";
+}
+
 function checkErrorStatus() {
   getJSON(PROXY + "/error-status").then(function(res) {
     errorInfo = res;
-    var btn = document.getElementById("errBtn");
-    btn.classList.toggle("err", !!res.has_error);
+    document.getElementById("errBtn").classList.toggle("err", !!res.has_error);
   }).catch(function() {});
+}
+
+function checkCooldown() {
+  getJSON(PROXY + "/cooldown").then(function(res) {
+    cooldownInfo = res;
+    document.getElementById("slBtn").classList.toggle("on", (res.count || 0) > 0);
+  }).catch(function() {});
+}
+
+function showCooldownInfo() {
+  if (!cooldownInfo) {
+    alert("状態を取得できていません。少し待ってからもう一度お試しください。");
+    checkCooldown();
+    return;
+  }
+  var list = cooldownInfo.cooldowns || [];
+  if (list.length === 0) {
+    alert("SLクールダウンはありません。\n\nSL発動または手動決済でポジションが消えると、その銘柄の同方向エントリーを1時間停止します。\n（逆方向のエントリーは可能です）");
+    return;
+  }
+  var lines = [];
+  for (var i = 0; i < list.length; i++) {
+    var c = list[i];
+    var sideLabel = c.side === "LONG" ? "ロング" : "ショート";
+    lines.push(c.symbol.replace("-USDT", "") + " " + sideLabel + "  残り " + fmtRemain(c.remaining_sec));
+  }
+  var msg = "SLクールダウン中（同方向のエントリーを停止）\n\n"
+    + lines.join("\n") + "\n\n"
+    + "すべて解除しますか？";
+  if (confirm(msg)) {
+    postJSON(PROXY + "/cooldown/clear").then(function(r) {
+      showToast("クールダウン", (r.cleared || 0) + "件を解除しました", "buy", 4000);
+      checkCooldown();
+    }).catch(function(e) {
+      showToast("エラー", "解除に失敗: " + e.message, "sell", 5000);
+    });
+  }
 }
 
 function showErrorInfo() {
@@ -501,10 +552,12 @@ document.getElementById("intervalSelect").addEventListener("change", function() 
 renderWatchlist();
 checkAutoTradeStatus();
 checkErrorStatus();
+checkCooldown();
 loadPositions();
 setInterval(loadPositions, 30000);
 setInterval(checkAutoTradeStatus, 60000);
 setInterval(checkErrorStatus, 60000);
+setInterval(checkCooldown, 60000);
 </script>
 </body>
 </html>
