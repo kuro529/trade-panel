@@ -179,6 +179,23 @@ function updateAutoTradeBtn() {
   btn.classList.toggle("on", autoTradeEnabled);
 }
 
+function saveInterval() {
+  try { localStorage.setItem("panelInterval", document.getElementById("intervalSelect").value); } catch (e) {}
+}
+
+function restoreInterval() {
+  var saved = null;
+  try { saved = localStorage.getItem("panelInterval"); } catch (e) {}
+  if (!saved) return;
+  var sel = document.getElementById("intervalSelect");
+  for (var i = 0; i < sel.options.length; i++) {
+    if (sel.options[i].value === saved) {
+      sel.value = saved;
+      return;
+    }
+  }
+}
+
 function syncWatchlist() {
   var symbols = ACTIVE.join(",");
   var interval = document.getElementById("intervalSelect").value;
@@ -546,14 +563,17 @@ function checkAutoTradeStatus() {
 }
 
 document.getElementById("intervalSelect").addEventListener("change", function() {
+  saveInterval();
   syncWatchlist().catch(function() {});
 });
 
+restoreInterval();
 renderWatchlist();
 checkAutoTradeStatus();
 checkErrorStatus();
 checkCooldown();
 loadPositions();
+syncWatchlist().catch(function() {});
 setInterval(loadPositions, 30000);
 setInterval(checkAutoTradeStatus, 60000);
 setInterval(checkErrorStatus, 60000);
