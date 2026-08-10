@@ -44,6 +44,17 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 </div>
 
 <div class="section">
+  <div class="section-title">反転モード</div>
+  <div class="section-note">ONにすると、トレンド判定・HOLD判定は元のシグナルの意味を保ったまま、実際の発注方向だけを逆にします</div>
+  <div class="row"><label>状態</label>
+    <select id="reverseMode" style="width:110px;background:#0d0d1a;border:1px solid #222236;color:#ccc;border-radius:6px;padding:6px 8px;font-size:13px;">
+      <option value="0">OFF</option>
+      <option value="1">ON</option>
+    </select>
+  </div>
+</div>
+
+<div class="section">
   <div class="section-title">TP/SL幅(BB率別、%)</div>
   <div class="row"><label>BB率50%以上</label><input type="number" id="tpslRate50" step="1"></div>
   <div class="row"><label>BB率30%以上</label><input type="number" id="tpslRate30" step="1"></div>
@@ -191,8 +202,9 @@ var SETTINGS_DEFAULT = {
   frLow2:-0.0001, frLow2Score:1,
   frLow3:-0.00005, frLow3Score:0.5,
   thWeak:5, thMid:7, thStrong:9,
-  holdPlus:3, holdMinus:-3,
-  tpslRate50:8, tpslRate30:7, tpslRate10:6, tpslRateLow:5
+  holdPlus:2, holdMinus:-2,
+  tpslRate50:8, tpslRate30:7, tpslRate10:6, tpslRateLow:5,
+  reverseMode:0
 };
 
 var DEFAULT_MARGIN = 20;
