@@ -55,6 +55,17 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 </div>
 
 <div class="section">
+  <div class="section-title">トレンドフィルタ</div>
+  <div class="section-note">ONにすると、トレンドが逆行している時は新規エントリーしません(ロング:トレンド0以上のみ／ショート:トレンド0以下のみ)</div>
+  <div class="row"><label>状態</label>
+    <select id="trendFilterEnabled" style="width:110px;background:#0d0d1a;border:1px solid #222236;color:#ccc;border-radius:6px;padding:6px 8px;font-size:13px;">
+      <option value="1">ON</option>
+      <option value="0">OFF</option>
+    </select>
+  </div>
+</div>
+
+<div class="section">
   <div class="section-title">TP/SL幅(BB率別、%)</div>
   <div class="row"><label>BB率50%以上</label><input type="number" id="tpslRate50" step="1"></div>
   <div class="row"><label>BB率30%以上</label><input type="number" id="tpslRate30" step="1"></div>
