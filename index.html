@@ -70,7 +70,7 @@ select { background: #0d0d1a; border: 1px solid #222236; color: #aaa; border-rad
     <button class="btn" onclick="toggleAdd()">＋ 追加</button>
     <button class="btn-gray" id="slBtn" onclick="showCooldownInfo()">SL</button>
     <button class="btn" id="errBtn" onclick="showErrorInfo()">ｴﾗｰ</button>
-    <a href="settings.html" class="btn" style="text-decoration:none;display:inline-block">⚙️ 設定</a>
+    <a href="settings.html" class="btn" id="settingsLink" style="text-decoration:none;display:inline-block">⚙️ 設定</a>
     <button class="btn" onclick="clearCacheOnly()">🧹 ﾘﾛｰﾄﾞ</button>
     <a href="log.html" class="btn" style="text-decoration:none;display:inline-block">📋 ﾛｸﾞ</a>
   </div>
@@ -113,6 +113,8 @@ function saveMode() { try { localStorage.setItem("panelMode", MODE); } catch (e)
 function updateModeBtn() {
   var btn = document.getElementById("modeBtn");
   btn.textContent = MODE === "cross" ? "🔀 ｸﾛｽ" : "🔀 通常";
+  var link = document.getElementById("settingsLink");
+  link.href = MODE === "cross" ? "settings_cross.html" : "settings.html";
 }
 
 function toggleMode() {
