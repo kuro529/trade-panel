@@ -66,12 +66,13 @@ select { background: #0d0d1a; border: 1px solid #222236; color: #aaa; border-rad
       <option value="1d">1d</option>
     </select>
     <button class="btn-notif" id="autoTradeBtn" onclick="toggleAutoTrade()">🤖 自動 OFF</button>
-    <a href="log.html" class="btn" style="text-decoration:none;display:inline-block">📋 ログ</a>
+    <button class="btn" id="modeBtn" onclick="toggleMode()">🔀 通常</button>
     <button class="btn" onclick="toggleAdd()">＋ 追加</button>
     <button class="btn-gray" id="slBtn" onclick="showCooldownInfo()">SL</button>
-    <button class="btn" id="errBtn" onclick="showErrorInfo()">エラー</button>
+    <button class="btn" id="errBtn" onclick="showErrorInfo()">ｴﾗｰ</button>
     <a href="settings.html" class="btn" style="text-decoration:none;display:inline-block">⚙️ 設定</a>
     <button class="btn" onclick="clearCacheOnly()">🧹 ﾘﾛｰﾄﾞ</button>
+    <a href="log.html" class="btn" style="text-decoration:none;display:inline-block">📋 ﾛｸﾞ</a>
   </div>
 </div>
 <div class="add-bar hidden" id="addBar">
@@ -96,6 +97,64 @@ select { background: #0d0d1a; border: 1px solid #222236; color: #aaa; border-rad
 <script>
 var PROXY = "https://bingx-proxy-v83p.onrender.com";
 var appToken = null;
+
+var MODE = "normal";
+try {
+  var savedMode = localStorage.getItem("panelMode");
+  if (savedMode === "cross" || savedMode === "normal") MODE = savedMode;
+} catch (e) {}
+
+function modeApi(path) {
+  return (MODE === "cross" ? PROXY + "/cross" : PROXY) + path;
+}
+
+function saveMode() { try { localStorage.setItem("panelMode", MODE); } catch (e) {} }
+
+function updateModeBtn() {
+  var btn = document.getElementById("modeBtn");
+  btn.textContent = MODE === "cross" ? "🔀 ｸﾛｽ" : "🔀 通常";
+}
+
+function toggleMode() {
+  var target = MODE === "cross" ? "normal" : "cross";
+  var targetLabel = target === "cross" ? "ｸﾛｽﾓｰﾄﾞ" : "通常ﾓｰﾄﾞ";
+  if (!confirm(targetLabel + "に切り替えますか？")) return;
+
+  var checkUrl = MODE === "cross" ? modeApi("/autotrade") : PROXY + "/autotrade";
+  var posUrl = MODE === "cross" ? modeApi("/position-details") : PROXY + "/position-details";
+
+  Promise.all([
+    getJSON(checkUrl).catch(function() { return null; }),
+    getJSON(posUrl).catch(function() { return null; })
+  ]).then(function(rs) {
+    var autoRes = rs[0];
+    var posRes = rs[1];
+    var isEnabled = autoRes && autoRes.enabled;
+    var posCount = posRes && posRes.positions ? posRes.positions.length : 0;
+
+    if (isEnabled) {
+      alert("自動売買がONのため切り替えできません。先に🤖ボタンで自動売買をOFFにしてください。");
+      return;
+    }
+    if (posCount > 0) {
+      alert("保有中のポジションがあるため切り替えできません（" + posCount + "件）。先にポジションを精算してください。");
+      return;
+    }
+
+    MODE = target;
+    saveMode();
+    updateModeBtn();
+    showToast("モード切替", targetLabel + "に切り替えました", "buy", 3000);
+    autoTradeEnabled = false;
+    updateAutoTradeBtn();
+    checkAutoTradeStatus();
+    checkErrorStatus();
+    checkCooldown();
+    loadPositions();
+  }).catch(function(e) {
+    alert("状態の確認に失敗しました: " + e.message + "\n切り替えを中止しました。");
+  });
+}
 
 function getAppToken() {
   if (appToken) return appToken;
@@ -211,7 +270,7 @@ function toggleAutoTrade() {
     }
     if (!confirm("自動売買をONにします。よろしいですか？")) return;
     syncWatchlist().then(function() {
-      return postJSON(PROXY + "/autotrade?enabled=true&token=" + encodeURIComponent(token));
+      return postJSON(modeApi("/autotrade?enabled=true&token=" + encodeURIComponent(token)));
     }).then(function() {
       autoTradeEnabled = true;
       updateAutoTradeBtn();
@@ -221,7 +280,7 @@ function toggleAutoTrade() {
       showToast("自動売買", "ON失敗: " + e.message, "sell", 5000);
     });
   } else {
-    postJSON(PROXY + "/autotrade?enabled=false").then(function() {
+    postJSON(modeApi("/autotrade?enabled=false")).then(function() {
       autoTradeEnabled = false;
       updateAutoTradeBtn();
       showToast("自動売買", "OFFにしました", "sell", 3000);
@@ -251,6 +310,24 @@ function fmtRemain(sec) {
 }
 
 function checkErrorStatus() {
+  if (MODE === "cross") {
+    getJSON(modeApi("/rate-status")).then(function(res) {
+      errorInfo = {
+        has_error: !!(res.entry_blocked || res.last_disable_reason || res.last_sl_error),
+        entry_blocked: res.entry_blocked,
+        entry_block_reason: res.entry_block_reason,
+        entry_block_time: res.entry_block_time || 0,
+        auto_trade_enabled: res.auto_trade_enabled,
+        disable_reason: res.last_disable_reason,
+        disable_time: res.disable_time || 0,
+        sl_error: res.last_sl_error,
+        margin: res.margin,
+        leverage: res.leverage
+      };
+      document.getElementById("errBtn").classList.toggle("err", !!errorInfo.has_error);
+    }).catch(function() {});
+    return;
+  }
   getJSON(PROXY + "/error-status").then(function(res) {
     errorInfo = res;
     document.getElementById("errBtn").classList.toggle("err", !!res.has_error);
@@ -258,6 +335,11 @@ function checkErrorStatus() {
 }
 
 function checkCooldown() {
+  if (MODE === "cross") {
+    cooldownInfo = { count: 0, cooldowns: [] };
+    document.getElementById("slBtn").classList.remove("on");
+    return;
+  }
   getJSON(PROXY + "/cooldown").then(function(res) {
     cooldownInfo = res;
     document.getElementById("slBtn").classList.toggle("on", (res.count || 0) > 0);
@@ -265,6 +347,10 @@ function checkCooldown() {
 }
 
 function showCooldownInfo() {
+  if (MODE === "cross") {
+    alert("クロスモードにはSLクールダウンの仕組みはありません。");
+    return;
+  }
   if (!cooldownInfo) {
     alert("状態を取得できていません。少し待ってからもう一度お試しください。");
     checkCooldown();
@@ -310,7 +396,7 @@ function showErrorInfo() {
       + "証拠金: " + e.margin + " USDT / レバレッジ: " + e.leverage + "倍\n\n"
       + "新規エントリーを再開しますか？\n（残高が不足したままだと再度停止します）";
     if (confirm(msg)) {
-      postJSON(PROXY + "/resume-entry").then(function() {
+      postJSON(modeApi("/resume-entry")).then(function() {
         showToast("エントリー再開", "新規エントリーを再開しました", "buy", 4000);
         checkErrorStatus();
       }).catch(function(err) {
@@ -330,10 +416,11 @@ function showErrorInfo() {
   }
 
   if (e.sl_error) {
+    var noteText = (MODE === "cross") ? "" : "SLは3分ごとに自動補完されます。\n";
     if (confirm("SL関連の警告があります。\n\n"
       + e.sl_error + "\n\n"
-      + "SLは3分ごとに自動補完されます。\nこの警告を消しますか？")) {
-      postJSON(PROXY + "/clear-errors").then(function() {
+      + noteText + "この警告を消しますか？")) {
+      postJSON(modeApi("/clear-errors")).then(function() {
         checkErrorStatus();
       }).catch(function() {});
     }
@@ -470,7 +557,7 @@ function setWarn(msg) {
 function pad2(n) { return ("0" + n).slice(-2); }
 
 function loadPositions() {
-  getJSON(PROXY + "/position-details").then(function(res) {
+  getJSON(modeApi("/position-details")).then(function(res) {
     var grid = document.getElementById("posGrid");
     var note = document.getElementById("posNote");
     var list = res.positions || [];
@@ -517,18 +604,26 @@ function loadPositions() {
       var pnlStr = (pnl === null) ? "-" : ((pnl >= 0 ? "+" : "") + pnl.toFixed(2) + " USDT");
       var sideClass = p.side === "LONG" ? "long" : "short";
       var sideLabel = p.side === "LONG" ? "ロング" : (p.side === "SHORT" ? "ショート" : "-");
+      var symbolText = escapeHtml(String(p.symbol || "").replace("-", "/"));
+      if (MODE === "cross") symbolText += "（" + sideLabel + "）";
+      var hasSignalInfo = ("entry_signal" in p);
+      var signalRowsHtml = "";
+      if (hasSignalInfo) {
+        signalRowsHtml =
+          "<div class='pos-row'><span class='pos-label'>取得時シグナル</span><span class='pos-val'><span class='signal-badge " + signalBadgeClass(p.entry_signal) + "'>" + escapeHtml(p.entry_signal || "-") + "</span> " + fmtNum(p.entry_score) + " / トレンド:" + fmtNum(p.entry_trend) + "</span></div>" +
+          "<div class='pos-row' style='border-bottom:none'><span class='pos-label'>現在シグナル</span><span class='pos-val'><span class='signal-badge " + signalBadgeClass(p.current_signal) + "'>" + escapeHtml(p.current_signal || "-") + "</span> " + fmtNum(p.current_score) + " / トレンド:" + fmtNum(p.current_trend) + "</span></div>";
+      }
       html += "<div class='pos-card'>" +
         "<div class='pos-header'>" +
-          "<span class='pos-symbol'>" + escapeHtml(String(p.symbol || "").replace("-", "/")) + "</span>" +
+          "<span class='pos-symbol'>" + symbolText + "</span>" +
           "<span class='pos-side " + sideClass + "'>" + sideLabel + "</span>" +
         "</div>" +
         "<div class='pos-row'><span class='pos-label'>現在価格</span><span class='pos-val'>" + fmtPrice(p.current_price) + "</span></div>" +
         "<div class='pos-row'><span class='pos-label'>取得価格</span><span class='pos-val'>" + fmtPrice(p.entry_price) + "</span></div>" +
         "<div class='pos-row'><span class='pos-label'>数量</span><span class='pos-val'>" + fmtQty(p.qty) + "</span></div>" +
         "<div class='pos-row'><span class='pos-label'>SL</span><span class='pos-val'>" + fmtPrice(p.sl_price) + "</span></div>" +
-        "<div class='pos-row'><span class='pos-label'>損益</span><span class='" + pnlClass + "'>" + pnlStr + "</span></div>" +
-        "<div class='pos-row'><span class='pos-label'>取得時シグナル</span><span class='pos-val'><span class='signal-badge " + signalBadgeClass(p.entry_signal) + "'>" + escapeHtml(p.entry_signal || "-") + "</span> " + fmtNum(p.entry_score) + " / トレンド:" + fmtNum(p.entry_trend) + "</span></div>" +
-        "<div class='pos-row' style='border-bottom:none'><span class='pos-label'>現在シグナル</span><span class='pos-val'><span class='signal-badge " + signalBadgeClass(p.current_signal) + "'>" + escapeHtml(p.current_signal || "-") + "</span> " + fmtNum(p.current_score) + " / トレンド:" + fmtNum(p.current_trend) + "</span></div>" +
+        "<div class='pos-row'" + (hasSignalInfo ? "" : " style='border-bottom:none'") + "><span class='pos-label'>損益</span><span class='" + pnlClass + "'>" + pnlStr + "</span></div>" +
+        signalRowsHtml +
       "</div>";
     }
     grid.innerHTML = html;
@@ -554,7 +649,7 @@ function clearCacheOnly() {
 }
 
 function checkAutoTradeStatus() {
-  getJSON(PROXY + "/autotrade").then(function(res) {
+  getJSON(modeApi("/autotrade")).then(function(res) {
     if (autoTradeEnabled !== res.enabled) {
       autoTradeEnabled = res.enabled;
       updateAutoTradeBtn();
@@ -567,6 +662,7 @@ document.getElementById("intervalSelect").addEventListener("change", function() 
   syncWatchlist().catch(function() {});
 });
 
+updateModeBtn();
 restoreInterval();
 renderWatchlist();
 checkAutoTradeStatus();
