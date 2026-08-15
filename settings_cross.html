@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>⚙️ クロス設定</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif; min-height: 100vh; padding-bottom: 0; }
+.header { display: flex; justify-content: space-between; align-items: center; padding: 18px 16px; border-bottom: 1px solid #12121f; position: sticky; top: 0; background: #07070f; z-index: 100; }
+.title { font-size: 18px; font-weight: 800; color: #fff; }
+.btn { padding: 6px 14px; border-radius: 8px; border: 1px solid #00e5a044; background: #00e5a010; color: #00e5a0; cursor: pointer; font-size: 13px; text-decoration: none; display: inline-block; white-space: nowrap; }
+.status { padding: 8px 16px; font-size: 12px; color: #555; border-bottom: 1px solid #12121f; }
+.status.err { color: #ff8fa3; }
+.section { padding: 16px; border-bottom: 1px solid #12121f; }
+.section-title { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 12px; }
+.section-note { font-size: 11px; color: #555; font-weight: 400; margin-bottom: 10px; }
+.row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+.row label { flex: 1; font-size: 12px; color: #888; }
+.row input { width: 80px; background: #0d0d1a; border: 1px solid #222236; color: #ccc; border-radius: 6px; padding: 6px 8px; font-size: 13px; text-align: right; }
+.save-bar { position: sticky; bottom: 0; background: #0d0d1a; border-top: 1px solid #222236; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); display: flex; gap: 10px; z-index: 200; }
+.save-bar .btn { flex: 1; text-align: center; padding: 10px; font-size: 14px; }
+.btn-save { background: #00e5a0; color: #000; border: none; }
+.btn-reset { background: #ff4d6d10; color: #ff4d6d; border: 1px solid #ff4d6d44; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="title">⚙️ ｸﾛｽ設定</div>
+  <a href="index.html" class="btn">← 戻る</a>
+</div>
+
+<div class="status" id="statusBar">読み込み中...</div>
+
+<div class="section">
+  <div class="section-title">自動売買設定</div>
+  <div class="section-note">証拠金・レバレッジは通常モードと共通です</div>
+  <div class="row"><label>証拠金(USDT)</label><input type="number" id="tradeMargin" step="1"></div>
+  <div class="row"><label>レバレッジ(倍)</label><input type="number" id="tradeLeverage" step="1"></div>
+</div>
+
+<div class="section">
+  <div class="section-title">TP幅(BB率別、%)</div>
+  <div class="row"><label>BB率50%以上</label><input type="number" id="tpRate50" step="1"></div>
+  <div class="row"><label>BB率30%以上</label><input type="number" id="tpRate30" step="1"></div>
+  <div class="row"><label>BB率10%以上</label><input type="number" id="tpRate10" step="1"></div>
+  <div class="row"><label>BB率10%未満</label><input type="number" id="tpRateLow" step="1"></div>
+</div>
+
+<div class="section">
+  <div class="section-title">SL幅(BB率別、%)</div>
+  <div class="row"><label>BB率50%以上</label><input type="number" id="tpslRate50" step="1"></div>
+  <div class="row"><label>BB率30%以上</label><input type="number" id="tpslRate30" step="1"></div>
+  <div class="row"><label>BB率10%以上</label><input type="number" id="tpslRate10" step="1"></div>
+  <div class="row"><label>BB率10%未満</label><input type="number" id="tpslRateLow" step="1"></div>
+</div>
+
+<div class="save-bar">
+  <button class="btn btn-reset" onclick="resetAll()">リセット</button>
+  <button class="btn btn-save" onclick="saveAll()">保存</button>
+</div>
+
+<script>
+var PROXY = "https://bingx-proxy-v83p.onrender.com";
+
+var TPSL_DEFAULT = {
+  tpRate50:8, tpRate30:7, tpRate10:6, tpRateLow:5,
+  tpslRate50:8, tpslRate30:7, tpslRate10:6, tpslRateLow:5
+};
+
+var DEFAULT_MARGIN = 20;
+var DEFAULT_LEVERAGE = 10;
+
+var loadedOk = { tpsl: false, trade: false };
+
+function setStatus(text, isErr) {
+  var el = document.getElementById("statusBar");
+  el.textContent = text;
+  el.className = "status" + (isErr ? " err" : "");
+}
+
+function applyDefaults() {
+  for (var key in TPSL_DEFAULT) {
+    var el = document.getElementById(key);
+    if (el) el.value = TPSL_DEFAULT[key];
+  }
+  document.getElementById("tradeMargin").value = DEFAULT_MARGIN;
+  document.getElementById("tradeLeverage").value = DEFAULT_LEVERAGE;
+}
+
+function updateStatus() {
+  if (loadedOk.tpsl && loadedOk.trade) {
+    setStatus("サーバーの保存済み設定を読み込みました", false);
+  } else {
+    setStatus("⚠ サーバーから読み込めませんでした（初期値を表示中）", true);
+  }
+}
+
+function loadValues() {
+  applyDefaults();
+
+  var p1 = fetch(PROXY+"/cross/tpsl-settings").then(function(r){
+    if (!r.ok) throw new Error("HTTP "+r.status);
+    return r.json();
+  }).then(function(d){
+    for (var key in TPSL_DEFAULT) {
+      var el = document.getElementById(key);
+      var v = d[key];
+      if (el && v !== null && v !== undefined && !isNaN(Number(v))) el.value = Number(v);
+    }
+    loadedOk.tpsl = true;
+  }).catch(function(){ loadedOk.tpsl = false; });
+
+  var p2 = fetch(PROXY+"/trade-settings").then(function(r){
+    if (!r.ok) throw new Error("HTTP "+r.status);
+    return r.json();
+  }).then(function(d){
+    if (d && d.margin != null) document.getElementById("tradeMargin").value = d.margin;
+    if (d && d.leverage != null) document.getElementById("tradeLeverage").value = d.leverage;
+    loadedOk.trade = true;
+  }).catch(function(){ loadedOk.trade = false; });
+
+  Promise.all([p1, p2]).then(updateStatus);
+}
+
+function saveAll() {
+  if (!loadedOk.tpsl) {
+    if (!confirm("サーバーから設定を読み込めていません。このまま保存すると保存済みの設定が画面の値で上書きされます。続けますか？")) return;
+  }
+  var newSettings = {};
+  for (var key in TPSL_DEFAULT) {
+    var el = document.getElementById(key);
+    if (el) {
+      var v = parseFloat(el.value);
+      newSettings[key] = isNaN(v) ? TPSL_DEFAULT[key] : v;
+    }
+  }
+  var margin = parseFloat(document.getElementById("tradeMargin").value) || DEFAULT_MARGIN;
+  var leverage = parseInt(document.getElementById("tradeLeverage").value) || DEFAULT_LEVERAGE;
+  var settingsStr = encodeURIComponent(JSON.stringify(newSettings));
+
+  Promise.all([
+    fetch(PROXY+"/cross/tpsl-settings?settings="+settingsStr, {method:"POST"}),
+    fetch(PROXY+"/trade-settings?margin="+margin+"&leverage="+leverage, {method:"POST"})
+  ]).then(function(rs){
+    for (var i=0;i<rs.length;i++) { if (!rs[i].ok) throw new Error("HTTP "+rs[i].status); }
+    alert("設定を保存しました");
+    window.location.href = "index.html";
+  }).catch(function(e){
+    alert("保存に失敗しました: "+e.message);
+  });
+}
+
+function resetAll() {
+  if (confirm("すべての設定をデフォルトに戻しますか？（保存を押すまでサーバーには反映されません）")) {
+    applyDefaults();
+  }
+}
+
+loadValues();
+</script>
+</body>
+</html>
