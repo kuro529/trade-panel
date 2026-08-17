@@ -434,9 +434,10 @@ function showErrorInfo() {
 
 function renderWatchlist() {
   var grid = document.getElementById("watchGrid");
+  var sorted = WATCHLIST.slice().sort();
   var html = "";
-  for (var i = 0; i < WATCHLIST.length; i++) {
-    var sym = WATCHLIST[i];
+  for (var i = 0; i < sorted.length; i++) {
+    var sym = sorted[i];
     var on = ACTIVE.indexOf(sym) >= 0 ? " on" : "";
     html += "<button class='watch-btn" + on + "' onclick='toggleWatch(\"" + sym + "\")' ontouchstart='startLongPress(\"" + sym + "\")' ontouchend='cancelLongPress()'>" + escapeHtml(sym.replace("-USDT", "")) + "</button>";
   }
