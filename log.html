@@ -33,8 +33,8 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 <div class="header">
   <div class="title">📋 取引ログ</div>
   <div style="display:flex;gap:8px">
-    <button class="btn" onclick="loadLog()">🔄 更新</button>
-    <button class="btn btn-clear" onclick="clearLog()">🗑 クリア</button>
+    <button class="btn" id="sortBtn" onclick="toggleSort()">🕐 時間順</button>
+    <button class="btn btn-clear" onclick="clearLog()">🗑 ｸﾘｱ</button>
     <a href="index.html" class="btn">← 戻る</a>
   </div>
 </div>
@@ -45,6 +45,12 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 
 <script>
 var PROXY = "https://bingx-proxy-v83p.onrender.com";
+var SORT_MODE = "time";
+
+function toggleSort() {
+  SORT_MODE = (SORT_MODE === "time") ? "sym" : "time";
+  loadLog();
+}
 
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, function(c){
@@ -73,6 +79,18 @@ function loadLog() {
     return r.json();
   }).then(function(res){
     var log = res.log || [];
+    if (SORT_MODE === "sym") {
+      log.sort(function(a, b){
+        var sa = String(a.symbol || ""), sb = String(b.symbol || "");
+        if (sa < sb) return -1;
+        if (sa > sb) return 1;
+        return (b.time || 0) - (a.time || 0);
+      });
+    } else {
+      log.sort(function(a, b){ return (b.time || 0) - (a.time || 0); });
+    }
+    var sortBtn = document.getElementById("sortBtn");
+    if (sortBtn) sortBtn.textContent = (SORT_MODE === "sym") ? "🔤 銘柄順" : "🕐 時間順";
     var list = document.getElementById("list");
     var sum = document.getElementById("summary");
     var sumTotal = document.getElementById("summaryTotal");
