@@ -100,36 +100,42 @@ select { background: #0d0d1a; border: 1px solid #222236; color: #aaa; border-rad
 var PROXY = "https://bingx-proxy-v83p.onrender.com";
 var appToken = null;
 
+// モードは normal / cross / div の3つ。順送りで切り替える
+var MODE_ORDER = ["normal", "cross", "div"];
+var MODE_LABEL = { normal: "通常", cross: "ｸﾛｽ", div: "ﾀﾞｲﾊﾞｰ" };
+var MODE_PREFIX = { normal: "", cross: "/cross", div: "/div" };
+var MODE_SETTINGS = { normal: "settings.html", cross: "settings_cross.html", div: "settings_div.html" };
+
 var MODE = "normal";
 try {
   var savedMode = localStorage.getItem("panelMode");
-  if (savedMode === "cross" || savedMode === "normal") MODE = savedMode;
+  if (MODE_ORDER.indexOf(savedMode) >= 0) MODE = savedMode;
 } catch (e) {}
 
 function modeApi(path) {
-  return (MODE === "cross" ? PROXY + "/cross" : PROXY) + path;
+  return PROXY + MODE_PREFIX[MODE] + path;
 }
 
 function saveMode() { try { localStorage.setItem("panelMode", MODE); } catch (e) {} }
 
 function updateModeBtn() {
-  var btn = document.getElementById("modeBtn");
-  btn.textContent = MODE === "cross" ? "🔀 ｸﾛｽ" : "🔀 通常";
-  var link = document.getElementById("settingsLink");
-  link.href = MODE === "cross" ? "settings_cross.html" : "settings.html";
+  document.getElementById("modeBtn").textContent = "🔀 " + MODE_LABEL[MODE];
+  document.getElementById("settingsLink").href = MODE_SETTINGS[MODE];
+}
+
+function nextMode() {
+  var i = MODE_ORDER.indexOf(MODE);
+  return MODE_ORDER[(i + 1) % MODE_ORDER.length];
 }
 
 function toggleMode() {
-  var target = MODE === "cross" ? "normal" : "cross";
-  var targetLabel = target === "cross" ? "ｸﾛｽﾓｰﾄﾞ" : "通常ﾓｰﾄﾞ";
+  var target = nextMode();
+  var targetLabel = MODE_LABEL[target] + "ﾓｰﾄﾞ";
   if (!confirm(targetLabel + "に切り替えますか？")) return;
 
-  var checkUrl = MODE === "cross" ? modeApi("/autotrade") : PROXY + "/autotrade";
-  var posUrl = MODE === "cross" ? modeApi("/position-details") : PROXY + "/position-details";
-
   Promise.all([
-    getJSON(checkUrl).catch(function() { return null; }),
-    getJSON(posUrl).catch(function() { return null; })
+    getJSON(modeApi("/autotrade")).catch(function() { return null; }),
+    getJSON(modeApi("/position-details")).catch(function() { return null; })
   ]).then(function(rs) {
     var autoRes = rs[0];
     var posRes = rs[1];
@@ -272,7 +278,7 @@ function toggleAutoTrade() {
     if (ACTIVE.length === 0) {
       if (!confirm("監視中の銘柄が0件です。このままONにしますか？")) return;
     }
-    if (!confirm("自動売買をONにします。よろしいですか？")) return;
+    if (!confirm(MODE_LABEL[MODE] + "ﾓｰﾄﾞで自動売買をONにします。よろしいですか？")) return;
     syncWatchlist().then(function() {
       return postJSON(modeApi("/autotrade?enabled=true&token=" + encodeURIComponent(token)));
     }).then(function() {
@@ -314,7 +320,7 @@ function fmtRemain(sec) {
 }
 
 function checkErrorStatus() {
-  if (MODE === "cross") {
+  if (MODE === "cross" || MODE === "div") {
     getJSON(modeApi("/rate-status")).then(function(res) {
       errorInfo = {
         has_error: !!(res.entry_blocked || res.last_disable_reason || res.last_sl_error),
@@ -344,6 +350,25 @@ function checkCooldown() {
     document.getElementById("slBtn").classList.remove("on");
     return;
   }
+  if (MODE === "div") {
+    // ダイバーは rate-status の cooldown 配列（key は "銘柄|方向"）を読む
+    getJSON(modeApi("/rate-status")).then(function(res) {
+      var list = res.cooldown || [];
+      var items = [];
+      for (var i = 0; i < list.length; i++) {
+        var parts = String(list[i].key || "").split("|");
+        items.push({
+          symbol: parts[0] || "?",
+          side: parts[1] || "",
+          reason: "TP/SL/手動決済",
+          remaining_sec: list[i].remaining_sec || 0
+        });
+      }
+      cooldownInfo = { count: items.length, cooldowns: items, cooldown_seconds: res.cooldown_seconds };
+      document.getElementById("slBtn").classList.toggle("on", items.length > 0);
+    }).catch(function() {});
+    return;
+  }
   getJSON(PROXY + "/cooldown").then(function(res) {
     cooldownInfo = res;
     document.getElementById("slBtn").classList.toggle("on", (res.count || 0) > 0);
@@ -362,26 +387,35 @@ function showCooldownInfo() {
   }
   var list = cooldownInfo.cooldowns || [];
   if (list.length === 0) {
-    alert("SLクールダウンはありません。\n\nSL発動または手動決済でポジションが消えると、その銘柄の同方向エントリーを1時間停止します。\n（逆方向のエントリーは可能です）");
+    if (MODE === "div") {
+      var sec = cooldownInfo.cooldown_seconds || 0;
+      alert("クールダウンはありません。\n\nTP・SL・手動決済でポジションが消えると、その銘柄の同方向エントリーを一定時間停止します（現在 " + Math.round(sec / 60) + "分／足の長さ×2）。\n（逆方向のエントリーは可能です）");
+    } else {
+      alert("SLクールダウンはありません。\n\nSL発動または手動決済でポジションが消えると、その銘柄の同方向エントリーを1時間停止します。\n（逆方向のエントリーは可能です）");
+    }
     return;
   }
   var lines = [];
   for (var i = 0; i < list.length; i++) {
     var c = list[i];
-    var sideLabel = c.side === "LONG" ? "ロング" : "ショート";
-    lines.push(c.symbol.replace("-USDT", "") + " " + sideLabel + "  残り " + fmtRemain(c.remaining_sec) + "  " + (c.reason || "SL/手動決済"));
+    var sideLabel = c.side === "LONG" ? "ロング" : (c.side === "SHORT" ? "ショート" : "-");
+    lines.push(String(c.symbol).replace("-USDT", "") + " " + sideLabel + "  残り " + fmtRemain(c.remaining_sec) + "  " + (c.reason || "SL/手動決済"));
   }
   var msg = "クールダウン中（同方向のエントリーを停止）\n\n"
     + lines.join("\n") + "\n\n"
     + "すべて解除しますか？";
-  if (confirm(msg)) {
-    postJSON(PROXY + "/cooldown/clear").then(function(r) {
-      showToast("クールダウン", (r.cleared || 0) + "件を解除しました", "buy", 4000);
-      checkCooldown();
-    }).catch(function(e) {
-      showToast("エラー", "解除に失敗: " + e.message, "sell", 5000);
-    });
-  }
+  if (!confirm(msg)) return;
+
+  // ダイバーの解除は GET、通常は POST
+  var clearReq = (MODE === "div")
+    ? getJSON(modeApi("/clear-cooldown"))
+    : postJSON(PROXY + "/cooldown/clear");
+  clearReq.then(function(r) {
+    showToast("クールダウン", (r.cleared || 0) + "件を解除しました", "buy", 4000);
+    checkCooldown();
+  }).catch(function(e) {
+    showToast("エラー", "解除に失敗: " + e.message, "sell", 5000);
+  });
 }
 
 function showErrorInfo() {
@@ -420,8 +454,8 @@ function showErrorInfo() {
   }
 
   if (e.sl_error) {
-    var noteText = (MODE === "cross") ? "" : "SLは3分ごとに自動補完されます。\n";
-    if (confirm("SL関連の警告があります。\n\n"
+    var noteText = (MODE === "normal") ? "SLは3分ごとに自動補完されます。\n" : "";
+    if (confirm("TP/SL関連の警告があります。\n\n"
       + e.sl_error + "\n\n"
       + noteText + "この警告を消しますか？")) {
       postJSON(modeApi("/clear-errors")).then(function() {
@@ -610,7 +644,11 @@ function loadPositions() {
       var sideClass = p.side === "LONG" ? "long" : "short";
       var sideLabel = p.side === "LONG" ? "ロング" : (p.side === "SHORT" ? "ショート" : "-");
       var symbolText = escapeHtml(String(p.symbol || "").replace("-", "/"));
-      if (MODE === "cross") symbolText += "（" + sideLabel + "）";
+      if (MODE !== "normal") symbolText += "（" + sideLabel + "）";
+      var hasTp = ("tp_price" in p);
+      var tpRowHtml = hasTp
+        ? "<div class='pos-row'><span class='pos-label'>TP</span><span class='pos-val'>" + fmtPrice(p.tp_price) + "</span></div>"
+        : "";
       var hasSignalInfo = ("entry_signal" in p);
       var signalRowsHtml = "";
       if (hasSignalInfo) {
@@ -627,6 +665,7 @@ function loadPositions() {
         "<div class='pos-row'><span class='pos-label'>取得価格</span><span class='pos-val'>" + fmtPrice(p.entry_price) + "</span></div>" +
         "<div class='pos-row'><span class='pos-label'>数量</span><span class='pos-val'>" + fmtQty(p.qty) + "</span></div>" +
         "<div class='pos-row'><span class='pos-label'>SL</span><span class='pos-val'>" + fmtPrice(p.sl_price) + "</span></div>" +
+        tpRowHtml +
         "<div class='pos-row'" + (hasSignalInfo ? "" : " style='border-bottom:none'") + "><span class='pos-label'>損益</span><span class='" + pnlClass + "'>" + pnlStr + "</span></div>" +
         signalRowsHtml +
       "</div>";
