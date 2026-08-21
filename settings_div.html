@@ -72,6 +72,13 @@ select { background: #0d0d1a; border: 1px solid #222236; color: #ccc; border-rad
   <div class="row"><span class="label">山谷の判定本数<span class="sub">左右この本数より高い/低い足を山谷とする</span></span><input type="number" id="swingN" step="1" min="1"></div>
   <div class="row"><span class="label">比較の最小間隔<span class="sub">本。近すぎる山谷は比較しない</span></span><input type="number" id="minGap" step="1" min="1"></div>
   <div class="row"><span class="label">比較の最大間隔<span class="sub">本。離れすぎた山谷は比較しない</span></span><input type="number" id="maxGap" step="1" min="1"></div>
+  <div class="row">
+    <span class="label">反転モード<span class="sub">ONで判定と逆の向きに建てる</span></span>
+    <select id="reverseMode">
+      <option value="0">OFF（判定通り）</option>
+      <option value="1">ON（逆に建てる）</option>
+    </select>
+  </div>
 </div>
 
 <div class="footer">
@@ -140,6 +147,7 @@ function loadAll() {
   getJSON(DIV + "/tpsl-settings").then(function(s) {
     for (var i = 0; i < NUM_KEYS.length; i++) setVal(NUM_KEYS[i], s[NUM_KEYS[i]]);
     document.getElementById("requireBoth").value = String(s.requireBoth ? 1 : 0);
+    document.getElementById("reverseMode").value = String(s.reverseMode ? 1 : 0);
   }).catch(function(e) {
     showToast("設定の取得に失敗: " + e.message, false);
   });
@@ -158,9 +166,10 @@ function saveAll() {
       showToast(NUM_KEYS[i] + " の値が不正です", false);
       return;
     }
-    payload[NUM_KEYS[i]] = n;
-  }
+        payload[NUM_KEYS[i]] = n;
+
   payload.requireBoth = Number(document.getElementById("requireBoth").value);
+  payload.reverseMode = Number(document.getElementById("reverseMode").value);
 
   if (payload.minGap >= payload.maxGap) {
     showToast("最小間隔は最大間隔より小さくしてください", false);
