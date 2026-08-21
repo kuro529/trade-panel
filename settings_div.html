@@ -41,6 +41,26 @@ select { background: #0d0d1a; border: 1px solid #222236; color: #ccc; border-rad
 </div>
 
 <div class="section">
+  <div class="section-title">決済の方式</div>
+  <div class="section-note">TPをOFFにすると次の発注からTPを置きません。既存のTPは残るので、消す場合は下の「TP取消」を使ってください。</div>
+  <div class="row">
+    <span class="label">TP設定<span class="sub">OFFで利確注文を置かない</span></span>
+    <select id="tpEnabled">
+      <option value="1">ON（TPを置く）</option>
+      <option value="0">OFF（置かない）</option>
+    </select>
+  </div>
+  <div class="row">
+    <span class="label">トレーリングSL<span class="sub">ONで価格が伸びた分SLを追いかける</span></span>
+    <select id="trailingEnabled">
+      <option value="0">OFF（固定）</option>
+      <option value="1">ON（追いかける）</option>
+    </select>
+  </div>
+  <div class="row"><span class="label">トレーリング発動幅<span class="sub">SLがこの%以上改善する時だけ付け替える</span></span><input type="number" id="trailingStep" step="0.1" min="0"></div>
+</div>
+
+<div class="section">
   <div class="section-title">TP幅（利確）</div>
   <div class="section-note">BB率に応じて4段階。取得価格からこの%離れた位置に置きます。</div>
   <div class="row"><span class="label">BB率 50%以上</span><input type="number" id="tpRate50" step="0.1"></div>
@@ -51,7 +71,7 @@ select { background: #0d0d1a; border: 1px solid #222236; color: #ccc; border-rad
 
 <div class="section">
   <div class="section-title">SL幅（損切り）</div>
-  <div class="section-note">同じく4段階。逆方向にこの%動いたら成行で決済します。</div>
+  <div class="section-note">同じく4段階。トレーリングONの時は、現在価格からこの%離れた位置に追従します。</div>
   <div class="row"><span class="label">BB率 50%以上</span><input type="number" id="slRate50" step="0.1"></div>
   <div class="row"><span class="label">BB率 30%以上</span><input type="number" id="slRate30" step="0.1"></div>
   <div class="row"><span class="label">BB率 10%以上</span><input type="number" id="slRate10" step="0.1"></div>
@@ -82,6 +102,12 @@ select { background: #0d0d1a; border: 1px solid #222236; color: #ccc; border-rad
   </div>
 </div>
 
+<div class="section">
+  <div class="section-title">メンテナンス</div>
+  <div class="section-note">保有中の全ポジションのTP注文を取り消します。TPをOFFにした後に使ってください。</div>
+  <div class="row"><span class="label">TP取消</span><button class="btn" onclick="cancelTp()">実行</button></div>
+</div>
+
 <div class="footer">
   <button class="btn" onclick="loadAll()">🔄 再読込</button>
   <button class="btn btn-save" onclick="saveAll()">💾 保存</button>
@@ -94,8 +120,10 @@ var DIV = PROXY + "/div";
 var NUM_KEYS = [
   "tpRate50", "tpRate30", "tpRate10", "tpRateLow",
   "slRate50", "slRate30", "slRate10", "slRateLow",
-  "validBars", "swingN", "minGap", "maxGap", "minAtrRatio"
+  "validBars", "swingN", "minGap", "maxGap", "minAtrRatio", "trailingStep"
 ];
+
+var SEL_KEYS = ["requireBoth", "reverseMode", "tpEnabled", "trailingEnabled"];
 
 function getJSON(url) {
   return new Promise(function(resolve, reject) {
@@ -147,8 +175,9 @@ function setVal(id, v) {
 function loadAll() {
   getJSON(DIV + "/tpsl-settings").then(function(s) {
     for (var i = 0; i < NUM_KEYS.length; i++) setVal(NUM_KEYS[i], s[NUM_KEYS[i]]);
-    document.getElementById("requireBoth").value = String(s.requireBoth ? 1 : 0);
-    document.getElementById("reverseMode").value = String(s.reverseMode ? 1 : 0);
+    for (var j = 0; j < SEL_KEYS.length; j++) {
+      document.getElementById(SEL_KEYS[j]).value = String(s[SEL_KEYS[j]] ? 1 : 0);
+    }
   }).catch(function(e) {
     showToast("設定の取得に失敗: " + e.message, false);
   });
@@ -169,10 +198,9 @@ function saveAll() {
     }
     payload[NUM_KEYS[i]] = n;
   }
-
-  payload.requireBoth = Number(document.getElementById("requireBoth").value);
-
-  payload.reverseMode = Number(document.getElementById("reverseMode").value);
+  for (var j = 0; j < SEL_KEYS.length; j++) {
+    payload[SEL_KEYS[j]] = Number(document.getElementById(SEL_KEYS[j]).value);
+  }
 
   if (payload.minGap >= payload.maxGap) {
     showToast("最小間隔は最大間隔より小さくしてください", false);
@@ -194,6 +222,16 @@ function saveAll() {
     .catch(function(e) {
       showToast("保存に失敗: " + e.message, false);
     });
+}
+
+function cancelTp() {
+  if (!confirm("保有中の全ポジションのTP注文を取り消します。よろしいですか？")) return;
+  getJSON(DIV + "/cancel-tp").then(function(r) {
+    var n = (r.cancelled || []).length;
+    showToast(n + "件のTPを取り消しました", true);
+  }).catch(function(e) {
+    showToast("取消に失敗: " + e.message, false);
+  });
 }
 
 loadAll();
