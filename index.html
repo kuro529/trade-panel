@@ -650,6 +650,14 @@ function loadPositions() {
         ? "<div class='pos-row'><span class='pos-label'>TP</span><span class='pos-val'>" + fmtPrice(p.tp_price) + "</span></div>"
         : "";
       var hasSignalInfo = ("entry_signal" in p);
+      var divSig = p.div_signal || null;
+      var divRowsHtml = "";
+      if (divSig) {
+        var strengthLabel = divSig.strength === "strong" ? "強" : "弱";
+        var atrLabel = (divSig.atr_ratio === null || divSig.atr_ratio === undefined) ? "-" : (divSig.atr_ratio + "ATR");
+        divRowsHtml =
+          "<div class='pos-row' style='border-bottom:none'><span class='pos-label'>取得時判定</span><span class='pos-val'><span class='signal-badge " + signalBadgeClass(divSig.side) + "'>" + escapeHtml(divSig.side || "-") + "</span> " + strengthLabel + (divSig.reversed ? "(反転)" : "") + " / 差" + atrLabel + " / 間隔" + fmtNum(divSig.gap) + "本</span></div>";
+      }
       var signalRowsHtml = "";
       if (hasSignalInfo) {
         signalRowsHtml =
@@ -666,8 +674,9 @@ function loadPositions() {
         "<div class='pos-row'><span class='pos-label'>数量</span><span class='pos-val'>" + fmtQty(p.qty) + "</span></div>" +
         "<div class='pos-row'><span class='pos-label'>SL</span><span class='pos-val'>" + fmtPrice(p.sl_price) + "</span></div>" +
         tpRowHtml +
-        "<div class='pos-row'" + (hasSignalInfo ? "" : " style='border-bottom:none'") + "><span class='pos-label'>損益</span><span class='" + pnlClass + "'>" + pnlStr + "</span></div>" +
+        "<div class='pos-row'" + ((hasSignalInfo || divSig) ? "" : " style='border-bottom:none'") + "><span class='pos-label'>損益</span><span class='" + pnlClass + "'>" + pnlStr + "</span></div>" +
         signalRowsHtml +
+        divRowsHtml +
       "</div>";
     }
     grid.innerHTML = html;
