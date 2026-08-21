@@ -72,6 +72,7 @@ select { background: #0d0d1a; border: 1px solid #222236; color: #ccc; border-rad
   <div class="row"><span class="label">山谷の判定本数<span class="sub">左右この本数より高い/低い足を山谷とする</span></span><input type="number" id="swingN" step="1" min="1"></div>
   <div class="row"><span class="label">比較の最小間隔<span class="sub">本。近すぎる山谷は比較しない</span></span><input type="number" id="minGap" step="1" min="1"></div>
   <div class="row"><span class="label">比較の最大間隔<span class="sub">本。離れすぎた山谷は比較しない</span></span><input type="number" id="maxGap" step="1" min="1"></div>
+  <div class="row"><span class="label">最小価格差<span class="sub">山谷の価格差がATRの何倍以上必要か。0で無効</span></span><input type="number" id="minAtrRatio" step="0.1" min="0"></div>
   <div class="row">
     <span class="label">反転モード<span class="sub">ONで判定と逆の向きに建てる</span></span>
     <select id="reverseMode">
@@ -93,7 +94,7 @@ var DIV = PROXY + "/div";
 var NUM_KEYS = [
   "tpRate50", "tpRate30", "tpRate10", "tpRateLow",
   "slRate50", "slRate30", "slRate10", "slRateLow",
-  "validBars", "swingN", "minGap", "maxGap"
+  "validBars", "swingN", "minGap", "maxGap", "minAtrRatio"
 ];
 
 function getJSON(url) {
