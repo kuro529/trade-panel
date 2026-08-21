@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>⚙️ ダイバー設定</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif; min-height: 100vh; padding-bottom: 80px; }
+.header { display: flex; justify-content: space-between; align-items: center; padding: 18px 16px 12px; border-bottom: 1px solid #12121f; position: sticky; top: 0; background: #07070f; z-index: 100; gap: 8px; }
+.title { font-size: 18px; font-weight: 800; color: #fff; }
+.btn { padding: 6px 14px; border-radius: 8px; border: 1px solid #00e5a044; background: #00e5a010; color: #00e5a0; cursor: pointer; font-size: 13px; white-space: nowrap; text-decoration: none; display: inline-block; }
+.btn-save { border-color: #5577ff; background: #5577ff20; color: #7799ff; font-weight: 700; }
+.section { padding: 14px 16px; border-bottom: 1px solid #12121f; }
+.section-title { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+.section-note { font-size: 11px; color: #555; margin-bottom: 10px; line-height: 1.5; }
+.row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; gap: 10px; border-bottom: 1px solid #0f0f1c; }
+.row:last-child { border-bottom: none; }
+.label { font-size: 13px; color: #aaa; }
+.sub { font-size: 11px; color: #555; display: block; }
+input[type=number] { width: 92px; background: #07070f; border: 1px solid #222236; color: #ccc; border-radius: 7px; padding: 6px 10px; font-size: 13px; text-align: right; }
+select { background: #0d0d1a; border: 1px solid #222236; color: #ccc; border-radius: 7px; padding: 6px 10px; font-size: 13px; }
+.footer { position: fixed; bottom: 0; left: 0; right: 0; display: flex; gap: 8px; padding: 10px 16px; background: #0d0d1af2; border-top: 1px solid #12121f; }
+.footer .btn { flex: 1; text-align: center; padding: 10px; }
+.toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 9999; border-radius: 12px; padding: 12px 18px; font-size: 13px; box-shadow: 0 4px 24px #0008; }
+.toast.ok { background: #00e5a0ee; color: #000; }
+.toast.ng { background: #ff4d6dee; color: #fff; }
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="title">⚙️ ダイバー設定</div>
+  <a href="index.html" class="btn">← 戻る</a>
+</div>
+
+<div class="section">
+  <div class="section-title">取引</div>
+  <div class="section-note">通常・クロスと共通の設定です。変更すると全モードに影響します。</div>
+  <div class="row"><span class="label">証拠金<span class="sub">1回のエントリーに使うUSDT</span></span><input type="number" id="margin" step="1" min="1"></div>
+  <div class="row"><span class="label">レバレッジ<span class="sub">倍</span></span><input type="number" id="leverage" step="1" min="1"></div>
+</div>
+
+<div class="section">
+  <div class="section-title">TP幅（利確）</div>
+  <div class="section-note">BB率に応じて4段階。取得価格からこの%離れた位置に置きます。</div>
+  <div class="row"><span class="label">BB率 50%以上</span><input type="number" id="tpRate50" step="0.1"></div>
+  <div class="row"><span class="label">BB率 30%以上</span><input type="number" id="tpRate30" step="0.1"></div>
+  <div class="row"><span class="label">BB率 10%以上</span><input type="number" id="tpRate10" step="0.1"></div>
+  <div class="row"><span class="label">BB率 10%未満</span><input type="number" id="tpRateLow" step="0.1"></div>
+</div>
+
+<div class="section">
+  <div class="section-title">SL幅（損切り）</div>
+  <div class="section-note">同じく4段階。逆方向にこの%動いたら成行で決済します。</div>
+  <div class="row"><span class="label">BB率 50%以上</span><input type="number" id="slRate50" step="0.1"></div>
+  <div class="row"><span class="label">BB率 30%以上</span><input type="number" id="slRate30" step="0.1"></div>
+  <div class="row"><span class="label">BB率 10%以上</span><input type="number" id="slRate10" step="0.1"></div>
+  <div class="row"><span class="label">BB率 10%未満</span><input type="number" id="slRateLow" step="0.1"></div>
+</div>
+
+<div class="section">
+  <div class="section-title">ダイバージェンス判定</div>
+  <div class="section-note">価格の山谷とRSI・MACDヒストグラムの向きを比べて、逆行していればエントリーします。</div>
+  <div class="row">
+    <span class="label">発注する強さ<span class="sub">強=RSIとヒストの両方が逆行</span></span>
+    <select id="requireBoth">
+      <option value="1">強のみ</option>
+      <option value="0">弱以上</option>
+    </select>
+  </div>
+  <div class="row"><span class="label">シグナル有効期限<span class="sub">山谷の確定から何本以内か</span></span><input type="number" id="validBars" step="1" min="0"></div>
+  <div class="row"><span class="label">山谷の判定本数<span class="sub">左右この本数より高い/低い足を山谷とする</span></span><input type="number" id="swingN" step="1" min="1"></div>
+  <div class="row"><span class="label">比較の最小間隔<span class="sub">本。近すぎる山谷は比較しない</span></span><input type="number" id="minGap" step="1" min="1"></div>
+  <div class="row"><span class="label">比較の最大間隔<span class="sub">本。離れすぎた山谷は比較しない</span></span><input type="number" id="maxGap" step="1" min="1"></div>
+</div>
+
+<div class="footer">
+  <button class="btn" onclick="loadAll()">🔄 再読込</button>
+  <button class="btn btn-save" onclick="saveAll()">💾 保存</button>
+</div>
+
+<script>
+var PROXY = "https://bingx-proxy-v83p.onrender.com";
+var DIV = PROXY + "/div";
+
+var NUM_KEYS = [
+  "tpRate50", "tpRate30", "tpRate10", "tpRateLow",
+  "slRate50", "slRate30", "slRate10", "slRateLow",
+  "validBars", "swingN", "minGap", "maxGap"
+];
+
+function getJSON(url) {
+  return new Promise(function(resolve, reject) {
+    var xhr = new XMLHttpRequest();
+    xhr.open("GET", url);
+    xhr.onload = function() {
+      if (xhr.status === 200) {
+        try { resolve(JSON.parse(xhr.responseText)); } catch (e) { reject(e); }
+      } else { reject(new Error("HTTP " + xhr.status)); }
+    };
+    xhr.onerror = function() { reject(new Error("Network error")); };
+    xhr.timeout = 30000;
+    xhr.ontimeout = function() { reject(new Error("Timeout")); };
+    xhr.send();
+  });
+}
+
+function postJSON(url) {
+  return new Promise(function(resolve, reject) {
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.onload = function() {
+      if (xhr.status === 200) {
+        try { resolve(JSON.parse(xhr.responseText)); } catch (e) { reject(e); }
+      } else { reject(new Error("HTTP " + xhr.status)); }
+    };
+    xhr.onerror = function() { reject(new Error("Network error")); };
+    xhr.timeout = 30000;
+    xhr.ontimeout = function() { reject(new Error("Timeout")); };
+    xhr.send();
+  });
+}
+
+function showToast(msg, ok) {
+  var t = document.createElement("div");
+  t.className = "toast " + (ok ? "ok" : "ng");
+  t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(function() { if (t.parentNode) t.parentNode.removeChild(t); }, 3500);
+}
+
+function setVal(id, v) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  if (v === null || v === undefined) return;
+  el.value = v;
+}
+
+function loadAll() {
+  getJSON(DIV + "/tpsl-settings").then(function(s) {
+    for (var i = 0; i < NUM_KEYS.length; i++) setVal(NUM_KEYS[i], s[NUM_KEYS[i]]);
+    document.getElementById("requireBoth").value = String(s.requireBoth ? 1 : 0);
+  }).catch(function(e) {
+    showToast("設定の取得に失敗: " + e.message, false);
+  });
+  getJSON(PROXY + "/trade-settings").then(function(s) {
+    setVal("margin", s.margin);
+    setVal("leverage", s.leverage);
+  }).catch(function() {});
+}
+
+function saveAll() {
+  var payload = {};
+  for (var i = 0; i < NUM_KEYS.length; i++) {
+    var el = document.getElementById(NUM_KEYS[i]);
+    var n = Number(el.value);
+    if (el.value === "" || isNaN(n)) {
+      showToast(NUM_KEYS[i] + " の値が不正です", false);
+      return;
+    }
+    payload[NUM_KEYS[i]] = n;
+  }
+  payload.requireBoth = Number(document.getElementById("requireBoth").value);
+
+  if (payload.minGap >= payload.maxGap) {
+    showToast("最小間隔は最大間隔より小さくしてください", false);
+    return;
+  }
+
+  var margin = Number(document.getElementById("margin").value);
+  var leverage = Number(document.getElementById("leverage").value);
+
+  postJSON(DIV + "/tpsl-settings?settings=" + encodeURIComponent(JSON.stringify(payload)))
+    .then(function() {
+      if (!margin || !leverage) return null;
+      return postJSON(PROXY + "/trade-settings?margin=" + margin + "&leverage=" + leverage);
+    })
+    .then(function() {
+      showToast("保存しました", true);
+      loadAll();
+    })
+    .catch(function(e) {
+      showToast("保存に失敗: " + e.message, false);
+    });
+}
+
+loadAll();
+</script>
+</body>
+</html>
