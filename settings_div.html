@@ -167,8 +167,10 @@ function saveAll() {
       return;
     }
     payload[NUM_KEYS[i]] = n;
+  }
 
   payload.requireBoth = Number(document.getElementById("requireBoth").value);
+
   payload.reverseMode = Number(document.getElementById("reverseMode").value);
 
   if (payload.minGap >= payload.maxGap) {
