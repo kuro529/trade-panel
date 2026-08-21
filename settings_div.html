@@ -166,7 +166,7 @@ function saveAll() {
       showToast(NUM_KEYS[i] + " の値が不正です", false);
       return;
     }
-        payload[NUM_KEYS[i]] = n;
+    payload[NUM_KEYS[i]] = n;
 
   payload.requireBoth = Number(document.getElementById("requireBoth").value);
   payload.reverseMode = Number(document.getElementById("reverseMode").value);
