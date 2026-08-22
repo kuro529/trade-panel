@@ -113,7 +113,7 @@ select { background: #0d0d1a; border: 1px solid #222236; color: #ccc; border-rad
 </div>
 
 <div class="footer">
-  <button class="btn" onclick="loadAll()">🔄 再読込</button>
+  <button class="btn" onclick="hardReload()">🔄 再読込</button>
   <button class="btn btn-save" onclick="saveAll()">💾 保存</button>
 </div>
 
@@ -227,6 +227,23 @@ function saveAll() {
     .catch(function(e) {
       showToast("保存に失敗: " + e.message, false);
     });
+}
+
+function hardReload() {
+  // キャッシュとService Workerを消してから読み直す。
+  // PWAは独自キャッシュを持つので、これをしないとHTMLの更新が反映されない
+  if ('caches' in window) {
+    caches.keys().then(function(names) {
+      names.forEach(function(name) { caches.delete(name); });
+    });
+  }
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(regs) {
+      regs.forEach(function(reg) { reg.unregister(); });
+    });
+  }
+  var url = window.location.href.split('?')[0] + '?t=' + Date.now();
+  window.location.href = url;
 }
 
 function cancelTp() {
