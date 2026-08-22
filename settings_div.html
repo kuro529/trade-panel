@@ -58,6 +58,10 @@ select { background: #0d0d1a; border: 1px solid #222236; color: #ccc; border-rad
     </select>
   </div>
   <div class="row"><span class="label">トレーリング発動幅<span class="sub">SLがこの%以上改善する時だけ付け替える</span></span><input type="number" id="trailingStep" step="0.1" min="0"></div>
+  <div class="row"><span class="label">段階1・含み益<span class="sub">%を超えたらSL幅を狭める。0で無効</span></span><input type="number" id="tighten1Profit" step="0.1" min="0"></div>
+  <div class="row"><span class="label">段階1・SL幅<span class="sub">%</span></span><input type="number" id="tighten1Width" step="0.1" min="0"></div>
+  <div class="row"><span class="label">段階2・含み益<span class="sub">%を超えたらさらに狭める。0で無効</span></span><input type="number" id="tighten2Profit" step="0.1" min="0"></div>
+  <div class="row"><span class="label">段階2・SL幅<span class="sub">%</span></span><input type="number" id="tighten2Width" step="0.1" min="0"></div>
 </div>
 
 <div class="section">
@@ -120,7 +124,8 @@ var DIV = PROXY + "/div";
 var NUM_KEYS = [
   "tpRate50", "tpRate30", "tpRate10", "tpRateLow",
   "slRate50", "slRate30", "slRate10", "slRateLow",
-  "validBars", "swingN", "minGap", "maxGap", "minAtrRatio", "trailingStep"
+  "validBars", "swingN", "minGap", "maxGap", "minAtrRatio", "trailingStep",
+  "tighten1Profit", "tighten1Width", "tighten2Profit", "tighten2Width"
 ];
 
 var SEL_KEYS = ["requireBoth", "reverseMode", "tpEnabled", "trailingEnabled"];
