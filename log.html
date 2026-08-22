@@ -15,7 +15,9 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 .summary.total { border-bottom: 1px solid #12121f; padding-top: 0; color: #666; }
 .summary b { color: #fff; font-weight: 700; }
 .list { padding: 4px 0 40px; }
-.row { display: flex; align-items: center; gap: 8px; padding: 9px 16px; border-bottom: 1px solid #10101c; font-size: 12px; white-space: nowrap; }
+.row { padding: 9px 16px; border-bottom: 1px solid #10101c; font-size: 12px; }
+.row-main { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.row-sub { margin-top: 3px; padding-left: 2px; font-size: 11px; color: #9c8fd0; word-break: break-all; }
 .c-sym { flex: 0 0 66px; color: #fff; font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
 .c-side { flex: 0 0 20px; font-weight: 700; text-align: center; }
 .c-side.long { color: #00e5a0; }
@@ -24,8 +26,7 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 .c-pnl.pos { color: #00e5a0; }
 .c-pnl.neg { color: #ff4d6d; }
 .c-pnl.nil { color: #555; }
-.c-reason { flex: 1 1 auto; color: #9c8fd0; overflow: hidden; text-overflow: ellipsis; text-align: right; }
-.c-time { flex: 0 0 88px; color: #555; text-align: right; font-variant-numeric: tabular-nums; }
+.c-time { flex: 1 1 auto; color: #555; text-align: right; font-variant-numeric: tabular-nums; }
 .empty-msg { color: #444; text-align: center; padding: 32px 16px; font-size: 13px; }
 </style>
 </head>
@@ -134,11 +135,13 @@ function loadLog() {
       var sideCls = e.side === "LONG" ? "long" : "short";
       var sideStr = e.side === "LONG" ? "L" : (e.side === "SHORT" ? "S" : "-");
       html += "<div class='row'>"+
-        "<span class='c-sym'>"+escapeHtml(String(e.symbol||"").replace("-USDT",""))+"</span>"+
-        "<span class='c-side "+sideCls+"'>"+sideStr+"</span>"+
-        "<span class='c-pnl "+pnlCls+"'>"+pnlStr+"</span>"+
-        "<span class='c-reason'>"+escapeHtml(e.reason||"-")+"</span>"+
-        "<span class='c-time'>"+fmtTime(e.time)+"</span>"+
+        "<div class='row-main'>"+
+          "<span class='c-sym'>"+escapeHtml(String(e.symbol||"").replace("-USDT",""))+"</span>"+
+          "<span class='c-side "+sideCls+"'>"+sideStr+"</span>"+
+          "<span class='c-pnl "+pnlCls+"'>"+pnlStr+"</span>"+
+          "<span class='c-time'>"+fmtTime(e.time)+"</span>"+
+        "</div>"+
+        "<div class='row-sub'>"+escapeHtml(e.reason||"-")+"</div>"+
       "</div>";
     });
     list.innerHTML = html;
