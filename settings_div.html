@@ -99,6 +99,15 @@ select { background: #0d0d1a; border: 1px solid #222236; color: #ccc; border-rad
   <div class="row"><span class="label">最小価格差<span class="sub">山谷の価格差がATRの何倍以上必要か。0で無効</span></span><input type="number" id="minAtrRatio" step="0.1" min="0"></div>
   <div class="row"><span class="label">最大価格差<span class="sub">ATRの何倍までを許すか。0で無効</span></span><input type="number" id="maxAtrRatio" step="0.1" min="0"></div>
   <div class="row">
+    <span class="label">トレンドフィルタ<span class="sub">強いトレンドに逆らう向きを見送る</span></span>
+    <select id="trendFilterEnabled">
+      <option value="0">OFF</option>
+      <option value="1">ON</option>
+    </select>
+  </div>
+  <div class="row"><span class="label">ロング見送り<span class="sub">トレンド値がこれ以下なら建てない</span></span><input type="number" id="trendBlockLong" step="1"></div>
+  <div class="row"><span class="label">ショート見送り<span class="sub">トレンド値がこれ以上なら建てない</span></span><input type="number" id="trendBlockShort" step="1"></div>
+  <div class="row">
     <span class="label">反転モード<span class="sub">ONで判定と逆の向きに建てる</span></span>
     <select id="reverseMode">
       <option value="0">OFF（判定通り）</option>
@@ -126,10 +135,11 @@ var NUM_KEYS = [
   "tpRate50", "tpRate30", "tpRate10", "tpRateLow",
   "slRate50", "slRate30", "slRate10", "slRateLow",
   "validBars", "swingN", "minGap", "maxGap", "minAtrRatio", "maxAtrRatio", "trailingStep",
-  "tighten1Profit", "tighten1Width", "tighten2Profit", "tighten2Width"
+  "tighten1Profit", "tighten1Width", "tighten2Profit", "tighten2Width",
+  "trendBlockLong", "trendBlockShort"
 ];
 
-var SEL_KEYS = ["requireBoth", "reverseMode", "tpEnabled", "trailingEnabled"];
+var SEL_KEYS = ["requireBoth", "reverseMode", "tpEnabled", "trailingEnabled", "trendFilterEnabled"];
 
 function getJSON(url) {
   return new Promise(function(resolve, reject) {
