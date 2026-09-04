@@ -99,6 +99,20 @@ select { background: #0d0d1a; border: 1px solid #222236; color: #ccc; border-rad
   <div class="row"><span class="label">最小価格差<span class="sub">山谷の価格差がATRの何倍以上必要か。0で無効</span></span><input type="number" id="minAtrRatio" step="0.1" min="0"></div>
   <div class="row"><span class="label">最大価格差<span class="sub">ATRの何倍までを許すか。0で無効</span></span><input type="number" id="maxAtrRatio" step="0.1" min="0"></div>
   <div class="row">
+    <span class="label">ロングエントリー<span class="sub">OFFでロングを建てない。精算は行う</span></span>
+    <select id="allowLong">
+      <option value="1">ON</option>
+      <option value="0">OFF</option>
+    </select>
+  </div>
+  <div class="row">
+    <span class="label">ショートエントリー<span class="sub">OFFでショートを建てない。精算は行う</span></span>
+    <select id="allowShort">
+      <option value="1">ON</option>
+      <option value="0">OFF</option>
+    </select>
+  </div>
+  <div class="row">
     <span class="label">トレンドフィルタ<span class="sub">強いトレンドに逆らう向きを見送る</span></span>
     <select id="trendFilterEnabled">
       <option value="0">OFF</option>
@@ -139,7 +153,8 @@ var NUM_KEYS = [
   "trendBlockLong", "trendBlockShort"
 ];
 
-var SEL_KEYS = ["requireBoth", "reverseMode", "tpEnabled", "trailingEnabled", "trendFilterEnabled"];
+var SEL_KEYS = ["requireBoth", "reverseMode", "tpEnabled", "trailingEnabled", "trendFilterEnabled",
+  "allowLong", "allowShort"];
 
 function getJSON(url) {
   return new Promise(function(resolve, reject) {
