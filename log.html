@@ -17,7 +17,14 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 .list { padding: 4px 0 40px; }
 .row { padding: 9px 16px; border-bottom: 1px solid #10101c; font-size: 12px; }
 .row-main { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-.row-sub { margin-top: 3px; padding-left: 2px; font-size: 11px; color: #9c8fd0; word-break: break-all; }
+/* 事由は項目ごとのチップにして、境目だけで折り返す。
+   文字単位で切ると「決済-6.」「2%」のように数値が割れて読めなくなる */
+.row-sub { margin-top: 4px; padding-left: 2px; display: flex; flex-wrap: wrap; gap: 3px 6px; font-size: 11px; line-height: 1.5; }
+.tag { white-space: nowrap; color: #9c8fd0; }
+.tag-base { font-weight: 700; color: #b9a9ff; }
+.tag-base.win { color: #00c98d; }
+.tag-base.sl { color: #ff7a90; }
+.tag-num { color: #7f8fa6; }
 .c-sym { flex: 0 0 66px; color: #fff; font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
 .c-side { flex: 0 0 20px; font-weight: 700; text-align: center; }
 .c-side.long { color: #00e5a0; }
@@ -72,6 +79,28 @@ function fmtTime(ms) {
 
 function pnlColor(v) {
   return v >= 0 ? "#00e5a0" : "#ff4d6d";
+}
+
+// 事由を「本体(項目/項目/…)」の形から分解する。
+// 括弧が無い古い形式（"SL/手動決済" だけ等）はそのまま1つのチップにする
+function renderReason(reason) {
+  var raw = String(reason || "-");
+  var m = raw.match(/^([^(]+)\((.*)\)\s*$/);
+  var base = m ? m[1] : raw;
+  var rest = m ? m[2] : "";
+  var cls = "tag tag-base";
+  if (base.indexOf("逆ダイバー") >= 0 || base.indexOf("TP") >= 0) cls += " win";
+  else if (base.indexOf("SL") >= 0) cls += " sl";
+  var html = "<span class='"+cls+"'>"+escapeHtml(base)+"</span>";
+  if (!rest) return html;
+  rest.split("/").forEach(function(p){
+    p = p.trim();
+    if (!p) return;
+    // 数値系の項目は色を落として、強弱や反転などの言葉を目立たせる
+    var isNum = /^[RHPTB]|^[0-9]/.test(p) || p.indexOf("%") >= 0 || p.indexOf("ATR") >= 0;
+    html += "<span class='tag"+(isNum ? " tag-num" : "")+"'>"+escapeHtml(p)+"</span>";
+  });
+  return html;
 }
 
 function loadLog() {
@@ -141,7 +170,7 @@ function loadLog() {
           "<span class='c-pnl "+pnlCls+"'>"+pnlStr+"</span>"+
           "<span class='c-time'>"+fmtTime(e.time)+"</span>"+
         "</div>"+
-        "<div class='row-sub'>"+escapeHtml(e.reason||"-")+"</div>"+
+        "<div class='row-sub'>"+renderReason(e.reason)+"</div>"+
       "</div>";
     });
     list.innerHTML = html;
