@@ -54,6 +54,23 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 </div>
 
 <div class="section">
+  <div class="section-title">トレーリングSL</div>
+  <div class="section-note">価格が伸びた分だけSLを追いかけます。段階1・2は含み益が閾値を超えたらSL幅を狭める設定で、0にすると無効です。</div>
+  <div class="row">
+    <label>トレーリングSL</label>
+    <select id="trailingEnabled">
+      <option value="0">OFF（固定）</option>
+      <option value="1">ON（追いかける）</option>
+    </select>
+  </div>
+  <div class="row"><label>発動幅<span class="sub">SLがこの%以上改善する時だけ付け替える</span></label><input type="number" id="trailingStep" step="0.1" min="0"></div>
+  <div class="row"><label>段階1・含み益(%)</label><input type="number" id="tighten1Profit" step="0.1" min="0"></div>
+  <div class="row"><label>段階1・SL幅(%)</label><input type="number" id="tighten1Width" step="0.1" min="0"></div>
+  <div class="row"><label>段階2・含み益(%)</label><input type="number" id="tighten2Profit" step="0.1" min="0"></div>
+  <div class="row"><label>段階2・SL幅(%)</label><input type="number" id="tighten2Width" step="0.1" min="0"></div>
+</div>
+
+<div class="section">
   <div class="section-title">自動売買設定</div>
   <div class="section-note">証拠金・レバレッジは通常モードと共通です</div>
   <div class="row"><label>証拠金(USDT)</label><input type="number" id="tradeMargin" step="1"></div>
@@ -62,6 +79,7 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 
 <div class="section">
   <div class="section-title">TP幅(BB率別、%)</div>
+  <div class="section-note">現在クロスモードはTP注文を出していません。値は保存されますが使われません。</div>
   <div class="row"><label>BB率50%以上</label><input type="number" id="tpRate50" step="1"></div>
   <div class="row"><label>BB率30%以上</label><input type="number" id="tpRate30" step="1"></div>
   <div class="row"><label>BB率10%以上</label><input type="number" id="tpRate10" step="1"></div>
@@ -70,6 +88,7 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 
 <div class="section">
   <div class="section-title">SL幅(BB率別、%)</div>
+  <div class="section-note">トレーリングONの時は、現在価格からこの%離れた位置に追従します。</div>
   <div class="row"><label>BB率50%以上</label><input type="number" id="tpslRate50" step="1"></div>
   <div class="row"><label>BB率30%以上</label><input type="number" id="tpslRate30" step="1"></div>
   <div class="row"><label>BB率10%以上</label><input type="number" id="tpslRate10" step="1"></div>
@@ -86,11 +105,14 @@ var PROXY = "https://bingx-proxy-v83p.onrender.com";
 
 var TPSL_DEFAULT = {
   tpRate50:8, tpRate30:7, tpRate10:6, tpRateLow:5,
-  tpslRate50:8, tpslRate30:7, tpslRate10:6, tpslRateLow:5
+  tpslRate50:8, tpslRate30:7, tpslRate10:6, tpslRateLow:5,
+  trailingStep:1,
+  tighten1Profit:3, tighten1Width:6,
+  tighten2Profit:10, tighten2Width:4
 };
 
 // プルダウンで選ぶ設定。数値欄とは扱いが違うので分けて持つ
-var SEL_DEFAULT = { crossMode:0, histRequireSign:0 };
+var SEL_DEFAULT = { crossMode:0, histRequireSign:0, trailingEnabled:0 };
 
 var DEFAULT_MARGIN = 20;
 var DEFAULT_LEVERAGE = 10;
@@ -119,7 +141,8 @@ function applyDefaults() {
 function updateStatus() {
   if (loadedOk.tpsl && loadedOk.trade) {
     var mode = document.getElementById("crossMode").value === "1" ? "ヒストグラム3本" : "クロス判定";
-    setStatus("保存済み設定を読み込みました（現在: " + mode + "）", false);
+    var trail = document.getElementById("trailingEnabled").value === "1" ? "トレーリングON" : "トレーリングOFF";
+    setStatus("保存済み設定を読み込みました（" + mode + " / " + trail + "）", false);
   } else {
     setStatus("⚠ サーバーから読み込めませんでした（初期値を表示中）", true);
   }
