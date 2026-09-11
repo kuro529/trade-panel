@@ -14,10 +14,12 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 .status.err { color: #ff8fa3; }
 .section { padding: 16px; border-bottom: 1px solid #12121f; }
 .section-title { font-size: 14px; font-weight: 700; color: #fff; margin-bottom: 12px; }
-.section-note { font-size: 11px; color: #555; font-weight: 400; margin-bottom: 10px; }
+.section-note { font-size: 11px; color: #555; font-weight: 400; margin-bottom: 10px; line-height: 1.5; }
 .row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
 .row label { flex: 1; font-size: 12px; color: #888; }
 .row input { width: 80px; background: #0d0d1a; border: 1px solid #222236; color: #ccc; border-radius: 6px; padding: 6px 8px; font-size: 13px; text-align: right; }
+.row select { background: #0d0d1a; border: 1px solid #222236; color: #ccc; border-radius: 6px; padding: 6px 8px; font-size: 13px; }
+.sub { font-size: 11px; color: #555; display: block; }
 .save-bar { position: sticky; bottom: 0; background: #0d0d1a; border-top: 1px solid #222236; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); display: flex; gap: 10px; z-index: 200; }
 .save-bar .btn { flex: 1; text-align: center; padding: 10px; font-size: 14px; }
 .btn-save { background: #00e5a0; color: #000; border: none; }
@@ -31,6 +33,25 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 </div>
 
 <div class="status" id="statusBar">読み込み中...</div>
+
+<div class="section">
+  <div class="section-title">判定方式</div>
+  <div class="section-note">クロス判定はDIFとシグナル線の大小で方向を決め、必要本数（4hは1本、他は2本）続いたら発注します。ヒスト3本判定は確定足の末尾3本のヒストグラムの並びだけを見て、2本連続で増加ならロング、減少ならショートします。</div>
+  <div class="row">
+    <label>判定方式</label>
+    <select id="crossMode">
+      <option value="0">クロス判定（従来）</option>
+      <option value="1">ヒストグラム3本</option>
+    </select>
+  </div>
+  <div class="row">
+    <label>ヒストの符号条件<span class="sub">ONでロングはプラス圏、ショートはマイナス圏のみ</span></label>
+    <select id="histRequireSign">
+      <option value="0">OFF（符号を見ない）</option>
+      <option value="1">ON</option>
+    </select>
+  </div>
+</div>
 
 <div class="section">
   <div class="section-title">自動売買設定</div>
@@ -68,6 +89,9 @@ var TPSL_DEFAULT = {
   tpslRate50:8, tpslRate30:7, tpslRate10:6, tpslRateLow:5
 };
 
+// プルダウンで選ぶ設定。数値欄とは扱いが違うので分けて持つ
+var SEL_DEFAULT = { crossMode:0, histRequireSign:0 };
+
 var DEFAULT_MARGIN = 20;
 var DEFAULT_LEVERAGE = 10;
 
@@ -84,13 +108,18 @@ function applyDefaults() {
     var el = document.getElementById(key);
     if (el) el.value = TPSL_DEFAULT[key];
   }
+  for (var skey in SEL_DEFAULT) {
+    var sel = document.getElementById(skey);
+    if (sel) sel.value = String(SEL_DEFAULT[skey]);
+  }
   document.getElementById("tradeMargin").value = DEFAULT_MARGIN;
   document.getElementById("tradeLeverage").value = DEFAULT_LEVERAGE;
 }
 
 function updateStatus() {
   if (loadedOk.tpsl && loadedOk.trade) {
-    setStatus("サーバーの保存済み設定を読み込みました", false);
+    var mode = document.getElementById("crossMode").value === "1" ? "ヒストグラム3本" : "クロス判定";
+    setStatus("保存済み設定を読み込みました（現在: " + mode + "）", false);
   } else {
     setStatus("⚠ サーバーから読み込めませんでした（初期値を表示中）", true);
   }
@@ -107,6 +136,11 @@ function loadValues() {
       var el = document.getElementById(key);
       var v = d[key];
       if (el && v !== null && v !== undefined && !isNaN(Number(v))) el.value = Number(v);
+    }
+    for (var skey in SEL_DEFAULT) {
+      var sel = document.getElementById(skey);
+      var sv = d[skey];
+      if (sel && sv !== null && sv !== undefined) sel.value = String(Number(sv) ? 1 : 0);
     }
     loadedOk.tpsl = true;
   }).catch(function(){ loadedOk.tpsl = false; });
@@ -134,6 +168,10 @@ function saveAll() {
       var v = parseFloat(el.value);
       newSettings[key] = isNaN(v) ? TPSL_DEFAULT[key] : v;
     }
+  }
+  for (var skey in SEL_DEFAULT) {
+    var sel = document.getElementById(skey);
+    if (sel) newSettings[skey] = Number(sel.value);
   }
   var margin = parseFloat(document.getElementById("tradeMargin").value) || DEFAULT_MARGIN;
   var leverage = parseInt(document.getElementById("tradeLeverage").value) || DEFAULT_LEVERAGE;
