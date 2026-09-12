@@ -25,14 +25,19 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 .tag-base.win { color: #00c98d; }
 .tag-base.sl { color: #ff7a90; }
 .tag-num { color: #7f8fa6; }
-.c-sym { flex: 0 0 66px; color: #fff; font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
-.c-side { flex: 0 0 20px; font-weight: 700; text-align: center; }
+.c-sym { flex: 0 0 60px; color: #fff; font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
+.c-side { flex: 0 0 16px; font-weight: 700; text-align: center; }
 .c-side.long { color: #00e5a0; }
 .c-side.short { color: #ff4d6d; }
-.c-pnl { flex: 0 0 78px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
+.c-pnl { flex: 0 0 64px; text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; }
 .c-pnl.pos { color: #00e5a0; }
 .c-pnl.neg { color: #ff4d6d; }
 .c-pnl.nil { color: #555; }
+/* 建玉に対する価格変動%。SL幅や「最高」と同じ物差しで読めるようにする */
+.c-pct { flex: 0 0 58px; text-align: right; font-size: 11px; opacity: 0.75; font-variant-numeric: tabular-nums; }
+.c-pct.pos { color: #00e5a0; }
+.c-pct.neg { color: #ff4d6d; }
+.c-pct.nil { color: #555; }
 .c-time { flex: 1 1 auto; color: #555; text-align: right; font-variant-numeric: tabular-nums; }
 .empty-msg { color: #444; text-align: center; padding: 32px 16px; font-size: 13px; }
 </style>
@@ -54,6 +59,9 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 <script>
 var PROXY = "https://bingx-proxy-v83p.onrender.com";
 var SORT_MODE = "time";
+// 建玉の大きさ(証拠金×レバレッジ)。損益を価格変動%に直すのに使う。
+// 過去のトレードも現在の設定値で計算するので、途中で設定を変えるとズレる
+var NOTIONAL = 0;
 
 function toggleSort() {
   SORT_MODE = (SORT_MODE === "time") ? "sym" : "time";
@@ -81,6 +89,27 @@ function pnlColor(v) {
   return v >= 0 ? "#00e5a0" : "#ff4d6d";
 }
 
+// 証拠金とレバレッジを取って建玉の大きさを出す。取れたらログを描き直す
+function loadNotional() {
+  fetch(PROXY+"/trade-settings").then(function(r){
+    if (!r.ok) throw new Error("HTTP "+r.status);
+    return r.json();
+  }).then(function(d){
+    var m = Number(d && d.margin);
+    var l = Number(d && d.leverage);
+    if (m > 0 && l > 0) {
+      NOTIONAL = m * l;
+      loadLog();
+    }
+  }).catch(function(){});
+}
+
+function fmtPnlPct(pnl) {
+  if (!NOTIONAL || pnl === null || pnl === undefined) return "";
+  var pct = Number(pnl) / NOTIONAL * 100;
+  return (pct >= 0 ? "+" : "") + pct.toFixed(2) + "%";
+}
+
 // 事由を「本体(項目/項目/…)」の形から分解する。
 // 括弧が無い古い形式（"SL/手動決済" だけ等）はそのまま1つのチップにする
 function renderReason(reason) {
@@ -89,7 +118,7 @@ function renderReason(reason) {
   var base = m ? m[1] : raw;
   var rest = m ? m[2] : "";
   var cls = "tag tag-base";
-  if (base.indexOf("逆ダイバー") >= 0 || base.indexOf("TP") >= 0) cls += " win";
+  if (base.indexOf("逆ダイバー") >= 0 || base.indexOf("反転") >= 0 || base.indexOf("TP") >= 0) cls += " win";
   else if (base.indexOf("SL") >= 0) cls += " sl";
   var html = "<span class='"+cls+"'>"+escapeHtml(base)+"</span>";
   if (!rest) return html;
@@ -168,6 +197,7 @@ function loadLog() {
           "<span class='c-sym'>"+escapeHtml(String(e.symbol||"").replace("-USDT",""))+"</span>"+
           "<span class='c-side "+sideCls+"'>"+sideStr+"</span>"+
           "<span class='c-pnl "+pnlCls+"'>"+pnlStr+"</span>"+
+          "<span class='c-pct "+pnlCls+"'>"+fmtPnlPct(pnl)+"</span>"+
           "<span class='c-time'>"+fmtTime(e.time)+"</span>"+
         "</div>"+
         "<div class='row-sub'>"+renderReason(e.reason)+"</div>"+
@@ -191,6 +221,7 @@ function clearLog() {
   });
 }
 
+loadNotional();
 loadLog();
 setInterval(loadLog, 60000);
 </script>
