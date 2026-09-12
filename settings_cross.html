@@ -44,15 +44,15 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
       <option value="1">ヒストグラム3本</option>
     </select>
   </div>
-  <div class="row">
+    <div class="row">
     <label>ヒストの符号条件<span class="sub">ONでロングはプラス圏、ショートはマイナス圏のみ</span></label>
     <select id="histRequireSign">
       <option value="0">OFF（符号を見ない）</option>
       <option value="1">ON</option>
     </select>
   </div>
+  <div class="row"><label>反転の見送り（ATR比）<span class="sub">逆行がこの倍数未満なら切り替えない。0で無効</span></label><input type="number" id="skipReverseAtr" step="0.1" min="0"></div>
 </div>
-
 <div class="section">
   <div class="section-title">トレーリングSL</div>
   <div class="section-note">価格が伸びた分だけSLを追いかけます。段階1・2は含み益が閾値を超えたらSL幅を狭める設定で、0にすると無効です。</div>
@@ -108,7 +108,8 @@ var TPSL_DEFAULT = {
   tpslRate50:8, tpslRate30:7, tpslRate10:6, tpslRateLow:5,
   trailingStep:1,
   tighten1Profit:3, tighten1Width:6,
-  tighten2Profit:10, tighten2Width:4
+  tighten2Profit:10, tighten2Width:4,
+  skipReverseAtr:1.0
 };
 
 // プルダウンで選ぶ設定。数値欄とは扱いが違うので分けて持つ
