@@ -652,6 +652,18 @@ function loadPositions() {
       var hasSignalInfo = ("entry_signal" in p);
       var divSig = p.div_signal || null;
       var divRowsHtml = "";
+      // クロスモードのヒスト3本判定。符号・傾き・SLの段・最高含み益を1行にまとめる
+      var crossRowHtml = "";
+      if (p.hist_sign) {
+        var arrow = p.side === "LONG" ? "↑" : "↓";
+        var slopeText = (p.hist_slope === null || p.hist_slope === undefined) ? "" : (" " + arrow + p.hist_slope + "ATR");
+        var crossParts = "H" + escapeHtml(p.hist_sign) + slopeText;
+        if (p.sl_stage) crossParts += " / SL" + escapeHtml(p.sl_stage);
+        var pk = toNum(p.peak_pct);
+        if (pk !== null) crossParts += " / 最高" + (pk >= 0 ? "+" : "") + pk + "%";
+        crossRowHtml =
+          "<div class='pos-row' style='border-bottom:none'><span class='pos-label'>取得時判定</span><span class='pos-val'>" + crossParts + "</span></div>";
+      }
       if (divSig) {
         var strengthLabel = divSig.strength === "strong" ? "強" : "弱";
         var atrLabel = (divSig.atr_ratio === null || divSig.atr_ratio === undefined) ? "-" : (divSig.atr_ratio + "ATR");
@@ -674,9 +686,10 @@ function loadPositions() {
         "<div class='pos-row'><span class='pos-label'>数量</span><span class='pos-val'>" + fmtQty(p.qty) + "</span></div>" +
         "<div class='pos-row'><span class='pos-label'>SL</span><span class='pos-val'>" + fmtPrice(p.sl_price) + "</span></div>" +
         tpRowHtml +
-        "<div class='pos-row'" + ((hasSignalInfo || divSig) ? "" : " style='border-bottom:none'") + "><span class='pos-label'>損益</span><span class='" + pnlClass + "'>" + pnlStr + "</span></div>" +
+        "<div class='pos-row'" + ((hasSignalInfo || divSig || crossRowHtml) ? "" : " style='border-bottom:none'") + "><span class='pos-label'>損益</span><span class='" + pnlClass + "'>" + pnlStr + "</span></div>" +
         signalRowsHtml +
         divRowsHtml +
+        crossRowHtml +
       "</div>";
     }
     grid.innerHTML = html;
