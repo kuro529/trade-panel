@@ -96,6 +96,7 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 </div>
 
 <div class="save-bar">
+  <button class="btn" onclick="hardReload()">🔄 再読込</button>
   <button class="btn btn-reset" onclick="resetAll()">リセット</button>
   <button class="btn btn-save" onclick="saveAll()">保存</button>
 </div>
@@ -217,6 +218,23 @@ function resetAll() {
   if (confirm("すべての設定をデフォルトに戻しますか？（保存を押すまでサーバーには反映されません）")) {
     applyDefaults();
   }
+}
+
+function hardReload() {
+  // キャッシュとService Workerを消してから読み直す。
+  // PWAは独自キャッシュを持つので、これをしないとHTMLの更新が反映されない
+  if ('caches' in window) {
+    caches.keys().then(function(names) {
+      names.forEach(function(name) { caches.delete(name); });
+    });
+  }
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.getRegistrations().then(function(regs) {
+      regs.forEach(function(reg) { reg.unregister(); });
+    });
+  }
+  var url = window.location.href.split('?')[0] + '?t=' + Date.now();
+  window.location.href = url;
 }
 
 loadValues();
