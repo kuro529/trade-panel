@@ -20,8 +20,8 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 .row input { width: 80px; background: #0d0d1a; border: 1px solid #222236; color: #ccc; border-radius: 6px; padding: 6px 8px; font-size: 13px; text-align: right; }
 .row select { background: #0d0d1a; border: 1px solid #222236; color: #ccc; border-radius: 6px; padding: 6px 8px; font-size: 13px; }
 .sub { font-size: 11px; color: #555; display: block; }
-.save-bar { position: sticky; bottom: 0; background: #0d0d1a; border-top: 1px solid #222236; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); display: flex; gap: 10px; z-index: 200; }
-.save-bar .btn { flex: 1; text-align: center; padding: 10px; font-size: 14px; }
+.save-bar { position: sticky; bottom: 0; background: #0d0d1a; border-top: 1px solid #222236; padding: 12px 16px calc(12px + env(safe-area-inset-bottom)); display: flex; gap: 8px; z-index: 200; }
+.save-bar .btn { flex: 1; text-align: center; padding: 10px; font-size: 13px; }
 .btn-save { background: #00e5a0; color: #000; border: none; }
 .btn-reset { background: #ff4d6d10; color: #ff4d6d; border: 1px solid #ff4d6d44; }
 </style>
@@ -44,15 +44,28 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
       <option value="1">ヒストグラム3本</option>
     </select>
   </div>
-    <div class="row">
+  <div class="row">
     <label>ヒストの符号条件<span class="sub">ONでロングはプラス圏、ショートはマイナス圏のみ</span></label>
     <select id="histRequireSign">
       <option value="0">OFF（符号を見ない）</option>
       <option value="1">ON</option>
     </select>
   </div>
-  <div class="row"><label>反転の見送り（ATR比）<span class="sub">逆行がこの倍数未満なら切り替えない。0で無効</span></label><input type="number" id="skipReverseAtr" step="0.1" min="0"></div>
 </div>
+
+<div class="section">
+  <div class="section-title">反転の見送り</div>
+  <div class="section-note">取得価格からの乖離がATRの何倍か見て、届いていなければ反転シグナルを見送ります。平常の値動きの範囲で往復すると、損失を確定させて手数料を払うだけになるのを防ぐためです。0で無効。</div>
+  <div class="row"><label>見送り幅（ATR比）<span class="sub">1.0でATR1本分。0で見送らない</span></label><input type="number" id="skipReverseAtr" step="0.1" min="0"></div>
+  <div class="row">
+    <label>見送る方向<span class="sub">有利方向も見送ると、プラス圏での切替も止める</span></label>
+    <select id="skipReverseBoth">
+      <option value="0">逆行時のみ</option>
+      <option value="1">両方向</option>
+    </select>
+  </div>
+</div>
+
 <div class="section">
   <div class="section-title">トレーリングSL</div>
   <div class="section-note">価格が伸びた分だけSLを追いかけます。段階1・2は含み益が閾値を超えたらSL幅を狭める設定で、0にすると無効です。</div>
@@ -110,11 +123,11 @@ var TPSL_DEFAULT = {
   trailingStep:1,
   tighten1Profit:3, tighten1Width:6,
   tighten2Profit:10, tighten2Width:4,
-  skipReverseAtr:1.0
+  skipReverseAtr:2.0
 };
 
 // プルダウンで選ぶ設定。数値欄とは扱いが違うので分けて持つ
-var SEL_DEFAULT = { crossMode:0, histRequireSign:0, trailingEnabled:0 };
+var SEL_DEFAULT = { crossMode:0, histRequireSign:0, trailingEnabled:0, skipReverseBoth:0 };
 
 var DEFAULT_MARGIN = 20;
 var DEFAULT_LEVERAGE = 10;
@@ -142,9 +155,11 @@ function applyDefaults() {
 
 function updateStatus() {
   if (loadedOk.tpsl && loadedOk.trade) {
-    var mode = document.getElementById("crossMode").value === "1" ? "ヒストグラム3本" : "クロス判定";
+    var mode = document.getElementById("crossMode").value === "1" ? "ヒスト3本" : "クロス判定";
     var trail = document.getElementById("trailingEnabled").value === "1" ? "トレーリングON" : "トレーリングOFF";
-    setStatus("保存済み設定を読み込みました（" + mode + " / " + trail + "）", false);
+    var skip = document.getElementById("skipReverseAtr").value + "ATR"
+      + (document.getElementById("skipReverseBoth").value === "1" ? "両方向" : "逆行のみ");
+    setStatus("読み込み完了（" + mode + " / " + trail + " / 見送り" + skip + "）", false);
   } else {
     setStatus("⚠ サーバーから読み込めませんでした（初期値を表示中）", true);
   }
