@@ -55,15 +55,9 @@ body { background: #07070f; color: #dde; font-family: -apple-system, sans-serif;
 
 <div class="section">
   <div class="section-title">反転の見送り</div>
-  <div class="section-note">取得価格からの乖離がATRの何倍か見て、届いていなければ反転シグナルを見送ります。平常の値動きの範囲で往復すると、損失を確定させて手数料を払うだけになるのを防ぐためです。0で無効。</div>
-  <div class="row"><label>見送り幅（ATR比）<span class="sub">1.0でATR1本分。0で見送らない</span></label><input type="number" id="skipReverseAtr" step="0.1" min="0"></div>
-  <div class="row">
-    <label>見送る方向<span class="sub">有利方向も見送ると、プラス圏での切替も止める</span></label>
-    <select id="skipReverseBoth">
-      <option value="0">逆行時のみ</option>
-      <option value="1">両方向</option>
-    </select>
-  </div>
+  <div class="section-note">取得価格からの乖離がATRの何倍か見て、届いていなければ反転シグナルを見送ります。逆行中と有利方向で別々の値を設定できます。どちらも0でその方向は見送りません。</div>
+  <div class="row"><label>逆行中（ATR比）<span class="sub">含み損の側。0で見送らない</span></label><input type="number" id="skipReverseAtr" step="0.1" min="0"></div>
+  <div class="row"><label>有利方向（ATR比）<span class="sub">含み益の側。0で見送らない</span></label><input type="number" id="skipFavorAtr" step="0.1" min="0"></div>
 </div>
 
 <div class="section">
@@ -123,11 +117,11 @@ var TPSL_DEFAULT = {
   trailingStep:1,
   tighten1Profit:3, tighten1Width:6,
   tighten2Profit:10, tighten2Width:4,
-  skipReverseAtr:2.0
+  skipReverseAtr:2.0, skipFavorAtr:0
 };
 
 // プルダウンで選ぶ設定。数値欄とは扱いが違うので分けて持つ
-var SEL_DEFAULT = { crossMode:0, histRequireSign:0, trailingEnabled:0, skipReverseBoth:0 };
+var SEL_DEFAULT = { crossMode:0, histRequireSign:0, trailingEnabled:0 };
 
 var DEFAULT_MARGIN = 20;
 var DEFAULT_LEVERAGE = 10;
@@ -157,9 +151,9 @@ function updateStatus() {
   if (loadedOk.tpsl && loadedOk.trade) {
     var mode = document.getElementById("crossMode").value === "1" ? "ヒスト3本" : "クロス判定";
     var trail = document.getElementById("trailingEnabled").value === "1" ? "トレーリングON" : "トレーリングOFF";
-    var skip = document.getElementById("skipReverseAtr").value + "ATR"
-      + (document.getElementById("skipReverseBoth").value === "1" ? "両方向" : "逆行のみ");
-    setStatus("読み込み完了（" + mode + " / " + trail + " / 見送り" + skip + "）", false);
+    var skip = "見送り逆" + document.getElementById("skipReverseAtr").value
+      + "/順" + document.getElementById("skipFavorAtr").value;
+    setStatus("読み込み完了（" + mode + " / " + trail + " / " + skip + "）", false);
   } else {
     setStatus("⚠ サーバーから読み込めませんでした（初期値を表示中）", true);
   }
